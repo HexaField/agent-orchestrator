@@ -16,27 +16,28 @@ export async function writeChangelog(cwd: string, task: string, content: string)
       const runJson = JSON.parse(
         await (await import('fs/promises')).readFile(path.join(runsDir, last, 'run.json'), 'utf8')
       )
-      verification = `\n\n## Verification\n- lint: ${runJson.verification?.lint}\n- typecheck: ${runJson.verification?.typecheck}\n- tests: passed=${runJson.verification?.tests?.passed} failed=${runJson.verification?.tests?.failed}`
+      const runId = runJson.runId || last
+      verification = `\n\n## Run\n- runId: ${runId}\n- startedAt: ${runJson.startedAt}\n\n## Verification\n- lint: ${runJson.verification?.lint}\n- typecheck: ${runJson.verification?.typecheck}\n- tests: passed=${runJson.verification?.tests?.passed} failed=${runJson.verification?.tests?.failed}`
       const gf = runJson.git
       if (gf) {
-        const files = (gf.files || [])
-          .slice(0, 30)
-          .map((f: string) => `- ${f}`)
-          .join('\n')
-        const diffPreview = gf.diff
-          ? '\n\n<details>\n<summary>Diff preview</summary>\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n'
-          : ''
-        // keep very small diff preview due to size
-        const small = gf.diff
-          ? String(gf.diff).slice(0, 8000) + (String(gf.diff).length > 8000 ? '\n...(truncated)' : '')
-          : ''
-        verification += `\n\n## Git changes\n${files}\n\n${diffPreview}\n\n${small}`
+        const files = (gf.files || []).slice(0, 30)
+        const filesList = files.map((f: string) => `- ${f}`).join('\n')
+        // Truncate per-file diff preview to avoid huge changelogs
+        const maxCharsPerFile = 2000
+        let diffPreview = ''
+        if (gf.diff) {
+          // attempt to split by file chunks if possible, otherwise truncate overall
+          const d = String(gf.diff)
+          const small = d.length > maxCharsPerFile ? d.slice(0, maxCharsPerFile) + '\n...(truncated)' : d
+          diffPreview = `\n\n<details>\n<summary>Diff preview (truncated)</summary>\n\n\n${small}\n\n</details>`
+        }
+        verification += `\n\n## Git changes\n${filesList}\n${diffPreview}`
       }
     }
   } catch {}
   await writeFileAtomic(
     p,
-    `---\ntask: ${task}\ncreatedAt: ${new Date().toISOString()}\n---\n\n${content}${verification}\n`
+    `---\ntask: ${task}\nrun: ${process.env.AO_RUN_ID ?? ''}\ncreatedAt: ${new Date().toISOString()}\n---\n\n${content}${verification}\n`
   )
   return rel
 }

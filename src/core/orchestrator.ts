@@ -9,6 +9,7 @@ import { routeWhatDone, whatDoneFromText } from './evaluation'
 import { withLock } from './locks'
 import { applyProgressPatch } from './progress'
 import { genNext, genContext, genChecklist, genResponseType } from './templates'
+import { writeFileAtomic } from '../io/fs'
 
 export async function getState(cwd: string): Promise<StateJsonV1> {
   const p = path.join(cwd, '.agent', 'state.json')
@@ -85,14 +86,23 @@ export async function runOnce(
       specText = await fs.readFile(path.join(cwd, 'spec.md'), 'utf8')
     } catch {}
 
-    const checklist = genChecklist(specText)
-    const contextPrompt = genContext()
+  const checklist = genChecklist(specText)
+  const contextPrompt = genContext(specText)
     const responseType = genResponseType()
+
+    // if a reviewer previously requested changes, include the Recommendations
+    // (stored as nextTask in state) as part of the context prompts
+    const state = current
+    const extraContext: string[] = []
+    if (state.nextTask) {
+      const nt = state.nextTask as any
+      extraContext.push(`Recommendations:\n${nt.title}\n${nt.summary}`)
+    }
 
     const initialAgentPrompt = opts.prompt ?? 'Implement the spec.'
     // assemble LLM prompt with context and checklist
     const llmPrompt = [
-      'Context:\n' + contextPrompt,
+      'Context:\n' + [contextPrompt, ...extraContext].filter(Boolean).join('\n\n'),
       'Checklist:\n' + checklist.map((c) => `- ${c}`).join('\n'),
       'ResponseType: ' + responseType,
       'Instructions:\n' + initialAgentPrompt
@@ -106,6 +116,19 @@ export async function runOnce(
       prompt: llmOut.text || initialAgentPrompt,
       cwd
     })
+
+      // if the response type is patches, persist agent stdout as a patch file
+      let patchesFiles: string[] = []
+      if (responseType === 'patches') {
+        try {
+          const relPatch = path.join('.agent', 'runs', runId, 'patches.diff')
+          const absPatch = path.join(cwd, relPatch)
+          await writeFileAtomic(absPatch, agentRes.stdout || '')
+          patchesFiles.push(relPatch)
+        } catch {
+          // ignore write failures; record nothing
+        }
+      }
 
     const what = whatDoneFromText(agentRes.stdout + '\n' + agentRes.stderr)
     const verification = await runVerification()
@@ -138,9 +161,9 @@ export async function runOnce(
         model: opts.model ?? 'gpt-oss:20b',
         params: { temperature: 0 }
       },
-      inputs: { initialAgentPrompt, contextPrompts: [contextPrompt], checklist, responseType, llmPrompt },
+  inputs: { initialAgentPrompt, contextPrompts: [contextPrompt, ...extraContext], checklist, responseType, llmPrompt },
       outputs: {
-        patches: [],
+        patches: patchesFiles,
         stdout: agentRes.stdout,
         stderr: agentRes.stderr,
         artifacts: []
@@ -161,7 +184,7 @@ export async function runOnce(
     // questions and write them into progress.md, then set orchestrator state.
   if (finalWhat === 'needs_clarification') {
       try {
-        const clar = (await import('./templates')).genClarify()
+        const clar = (await import('./templates')).genClarify(specText)
         await applyProgressPatch(cwd, { clarifications: clar })
       } catch {
         // ignore failures writing clarifications

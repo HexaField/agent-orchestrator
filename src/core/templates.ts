@@ -18,11 +18,15 @@ export function genChecklist(spec: string): string[] {
   return Array.from(items)
 }
 
-export function genContext(): string {
-  return 'Provide concise, relevant context only.'
+export function genContext(spec?: string): string {
+  const summary = spec ? spec.split('\n').slice(0, 4).join(' ').trim() : ''
+  const ctx = summary || 'No specification summary available.'
+  return `Context summary: ${ctx}\n\nUse the checklist and acceptance criteria to guide changes.`
 }
 
 export function genResponseType(): 'patches' | 'files' | 'commands' | 'mixed' {
+  const env = process.env.AO_RESPONSE_TYPE
+  if (env === 'patches' || env === 'files' || env === 'commands' || env === 'mixed') return env
   return 'mixed'
 }
 
@@ -30,12 +34,33 @@ export function genReviewChanges(): string {
   return 'Summary of changes.'
 }
 
-export function genClarify(): string {
-  return 'List ambiguities and ask targeted questions.'
+export function genClarify(spec?: string): string {
+  // derive simple clarifying questions from heading structure
+  if (!spec) return 'Please clarify the ambiguous requirements.'
+  const lexer = marked.lexer(spec)
+  const qs: string[] = []
+  for (const tok of lexer) {
+    if (tok.type === 'heading' && (tok as any).depth === 2) {
+      const t = String((tok as any).text).trim()
+      qs.push(`What are the acceptance criteria for '${t}'?`)
+    }
+  }
+  if (qs.length === 0) qs.push('Please clarify the overall acceptance criteria for this spec.')
+  return qs.join('\n')
 }
 
-export function genChange(): string {
-  return 'Actionable change requests.'
+export function genChange(spec?: string, reason?: string): import('../types/models').NextTask {
+  const id = 'rec-' + Math.random().toString(36).slice(2, 8)
+  const title = reason ? `Changes requested: ${reason}` : 'Recommended change'
+  const summary = spec ? `Please update the following based on the spec: ${spec.split('\n').slice(0, 2).join(' ')}` : 'Please address the requested changes in the review.'
+  const acceptance = ['Address review comments']
+  return {
+    id,
+    title,
+    summary,
+    acceptanceCriteria: acceptance,
+    createdAt: new Date().toISOString()
+  }
 }
 
 export function genUpdate(result: {

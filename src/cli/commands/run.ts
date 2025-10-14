@@ -11,6 +11,7 @@ const run = new Command('run')
   .option('--llm <name>', 'LLM adapter name')
   .option('--agent <name>', 'Agent adapter name')
   .option('--prompt <text>', 'Initial agent prompt')
+  .option('--apply-patches', 'Apply patches emitted by the agent when responseType=patches', false)
   .action(async (opts) => {
     const cfg = loadConfig()
     const cwd = path.resolve(process.cwd(), opts.cwd ?? '.')
@@ -23,6 +24,24 @@ const run = new Command('run')
       force: Boolean(opts.force),
       nonInteractive: Boolean(opts.nonInteractive)
     })
+    if (opts.applyPatches) {
+      try {
+        const { applyPatchesFromRun } = await import('../../core/patches')
+        // read state to get current run id
+        const { getState } = await import('../../core/orchestrator')
+        const st = await getState(cwd)
+        if (st.currentRunId) {
+          const res = await applyPatchesFromRun(cwd, st.currentRunId)
+          if (!res.applied) {
+            // in non-test runs, warn the user
+            // eslint-disable-next-line no-console
+            console.warn('Patches were not applied:', res.path)
+          }
+        }
+      } catch (e) {
+        // ignore failures to apply patches
+      }
+    }
   })
 
 export default run

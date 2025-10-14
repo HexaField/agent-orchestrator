@@ -9,7 +9,18 @@ export async function writeJsonAtomic<T>(file: string, data: T): Promise<void> {
   await ensureDir(path.dirname(file))
   const tmp = file + '.tmp'
   await fs.writeJson(tmp, data, { spaces: 2 })
-  await fs.move(tmp, file, { overwrite: true })
+  try {
+    await fs.move(tmp, file, { overwrite: true })
+  } catch (err) {
+    // fallback: copy and remove tmp in case a direct move/rename fails
+    try {
+      await fs.copy(tmp, file, { overwrite: true })
+    } finally {
+      try {
+        await fs.remove(tmp)
+      } catch {}
+    }
+  }
 }
 
 export async function readJsonSafe<T>(file: string, fallback: T): Promise<T> {
@@ -24,5 +35,15 @@ export async function writeFileAtomic(file: string, content: string): Promise<vo
   await ensureDir(path.dirname(file))
   const tmp = file + '.tmp'
   await fs.writeFile(tmp, content, 'utf8')
-  await fs.move(tmp, file, { overwrite: true })
+  try {
+    await fs.move(tmp, file, { overwrite: true })
+  } catch (err) {
+    try {
+      await fs.copy(tmp, file, { overwrite: true })
+    } finally {
+      try {
+        await fs.remove(tmp)
+      } catch {}
+    }
+  }
 }
