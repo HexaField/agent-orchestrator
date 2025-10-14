@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import { z } from 'zod'
 
 export const ConfigSchema = z.object({
   LLM_PROVIDER: z.string().default('vllm'),
@@ -7,7 +7,7 @@ export const ConfigSchema = z.object({
   AGENT: z.string().default('copilot-cli'),
   GIT_REMOTE: z.string().default('origin'),
   BRANCH_PREFIX: z.string().default('agent/'),
-  NON_INTERACTIVE: z.coerce.boolean().default(false),
-});
+  NON_INTERACTIVE: z.coerce.boolean().default(false)
+})
 
-export type AppConfig = z.infer<typeof ConfigSchema>;
+export type AppConfig = z.infer<typeof ConfigSchema>

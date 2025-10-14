@@ -1,11 +1,9 @@
-import { ConfigSchema, type AppConfig } from './schema';
+import { ConfigSchema, type AppConfig } from './schema'
 
-export function loadConfig(
-  env: Record<string, string | undefined> = process.env,
-): AppConfig {
-  const parsed = ConfigSchema.safeParse(env);
+export function loadConfig(env: Record<string, string | undefined> = process.env): AppConfig {
+  const parsed = ConfigSchema.safeParse(env)
   if (!parsed.success) {
-    throw new Error('Invalid configuration: ' + parsed.error.message);
+    throw new Error('Invalid configuration: ' + parsed.error.message)
   }
-  return parsed.data;
+  return parsed.data
 }

@@ -64,8 +64,7 @@ The orchestrator patches `progress.md` on each run based on outcomes.
 
 ## Verification
 
-If `package.json` contains common scripts (e.g., `test`, `typecheck`, `lint`), the verifier will run them.
-During Vitest or with `AO_SKIP_VERIFY=1`, verification is skipped to avoid recursion.
+If `package.json` contains common scripts (e.g., `test`, `typecheck`, `lint`), the verifier will run them. During Vitest or with `AO_SKIP_VERIFY=1`, verification is skipped to avoid recursion.
 
 ## Development
 

@@ -1,23 +1,20 @@
-import type { LLMAdapter } from '../../types/adapters';
-import { createVllm } from './vllm';
-import { createOpenAICompatible } from './openai-compatible';
-import { createPassthrough } from './passthrough';
+import type { LLMAdapter } from '../../types/adapters'
+import { createOpenAICompatible } from './openai-compatible'
+import { createPassthrough } from './passthrough'
+import { createVllm } from './vllm'
 
-export function getLLMAdapter(
-  name: string,
-  opts: { endpoint?: string; model?: string },
-): LLMAdapter {
+export function getLLMAdapter(name: string, opts: { endpoint?: string; model?: string }): LLMAdapter {
   switch (name) {
     case 'vllm':
-      return createVllm({ endpoint: opts.endpoint, model: opts.model });
+      return createVllm({ endpoint: opts.endpoint, model: opts.model })
     case 'openai-compatible':
       return createOpenAICompatible({
         endpoint: opts.endpoint,
-        model: opts.model,
-      });
+        model: opts.model
+      })
     case 'passthrough':
-      return createPassthrough();
+      return createPassthrough()
     default:
-      throw new Error(`Unknown LLM adapter: ${name}`);
+      throw new Error(`Unknown LLM adapter: ${name}`)
   }
 }

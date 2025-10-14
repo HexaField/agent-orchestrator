@@ -103,31 +103,4 @@ Key goals:
 
 These are the directed edges from the original diagram, included here for reproducibility and to feed structured agents or LLM prompts. Preserve labels exactly where present.
 
-spec --> progress
-spec --> clarif
-genChecklist --> progress
-genContext -.-> iap
-progress --> ha
-ha -- "Yes" --> iap
-iap --> start
-ha -- "No - Clarify" --> progress
-genClarify --> clarif
-start --> agentDone
-agentDone --> whatDone
-whatDone -- "Spec implemented" --> review
-whatDone -- "Completed Task" --> updateProgress
-genUpdate --> updateProgress
-updateProgress --> progress
-updateProgress --> nextTask
-genNext --> nextTask
-nextTask --> start
-whatDone -- "Needs Clarification" --> clarif
-clarif --> start
-review --> reqs
-genResponseType --> agentDone
-genReviewChanges --> changelog
-reqs -- "Yes" --> changelog
-reqs -- "No" --> genChange
-genChange --> recommend
-recommend --> start
-changelog --> commit
+spec --> progress spec --> clarif genChecklist --> progress genContext -.-> iap progress --> ha ha -- "Yes" --> iap iap --> start ha -- "No - Clarify" --> progress genClarify --> clarif start --> agentDone agentDone --> whatDone whatDone -- "Spec implemented" --> review whatDone -- "Completed Task" --> updateProgress genUpdate --> updateProgress updateProgress --> progress updateProgress --> nextTask genNext --> nextTask nextTask --> start whatDone -- "Needs Clarification" --> clarif clarif --> start review --> reqs genResponseType --> agentDone genReviewChanges --> changelog reqs -- "Yes" --> changelog reqs -- "No" --> genChange genChange --> recommend recommend --> start changelog --> commit

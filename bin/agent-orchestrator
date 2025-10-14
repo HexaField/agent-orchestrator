@@ -1,14 +1,12 @@
 #!/usr/bin/env node
-import { createRequire } from "module";
-import fs from "fs";
-const require = createRequire(import.meta.url);
-const distPath = new URL("../dist/index.js", import.meta.url).pathname;
+import fs from 'fs'
+import { createRequire } from 'module'
+const require = createRequire(import.meta.url)
+const distPath = new URL('../dist/index.js', import.meta.url).pathname
 if (fs.existsSync(distPath)) {
   // run the built ESM output via require to preserve CLI behavior
-  require(distPath);
+  require(distPath)
 } else {
-  console.error(
-    "Built files not found. Run `npm run build` before using the global CLI.",
-  );
-  process.exit(1);
+  console.error('Built files not found. Run `npm run build` before using the global CLI.')
+  process.exit(1)
 }
