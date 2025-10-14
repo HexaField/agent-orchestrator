@@ -21,8 +21,25 @@ describe('E2E Scenario B (needs clarification loop)', () => {
   });
 
   it('run marks needs_clarification', async () => {
-    await execa('node', [cli, 'run', '--cwd', cwd, '--agent', 'custom', '--llm', 'passthrough', '--prompt', 'Needs Clarification'], { env: { ...process.env, AO_SKIP_VERIFY: '1' } });
-    const state = JSON.parse(readFileSync(path.join(cwd, '.agent', 'state.json'), 'utf8'));
+    await execa(
+      'node',
+      [
+        cli,
+        'run',
+        '--cwd',
+        cwd,
+        '--agent',
+        'custom',
+        '--llm',
+        'passthrough',
+        '--prompt',
+        'Needs Clarification',
+      ],
+      { env: { ...process.env, AO_SKIP_VERIFY: '1' } },
+    );
+    const state = JSON.parse(
+      readFileSync(path.join(cwd, '.agent', 'state.json'), 'utf8'),
+    );
     expect(state.status).toBe('needs_clarification');
   });
 });

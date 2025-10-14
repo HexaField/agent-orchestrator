@@ -25,21 +25,14 @@ Node.js 18+ required.
 Initialize a repo for orchestration and run once using test-friendly adapters:
 
 ```bash
-# 1) initialize
-npx ts-node src/cli/index.ts init --cwd .
+# 1) initialize (via npx from the project root)
+npx agent-orchestrator init --cwd .
 
 # 2) run once with passthrough LLM and custom agent
-AO_SKIP_VERIFY=1 npx ts-node src/cli/index.ts run --cwd . --llm passthrough --agent custom --prompt "implement spec"
+AO_SKIP_VERIFY=1 npx agent-orchestrator run --cwd . --llm passthrough --agent custom --prompt "implement spec"
 
 # 3) check status
-npx ts-node src/cli/index.ts status --cwd .
-```
-
-In CI or when installed globally, use the bin:
-
-```bash
-agent-orchestrator init --cwd .
-agent-orchestrator run --cwd .
+npx agent-orchestrator status --cwd .
 ```
 
 ## Commands
@@ -87,7 +80,7 @@ This repo includes a GitHub Actions workflow that runs typecheck and tests on pu
 
 ## Troubleshooting
 
-- If ESM/CJS issues arise in dev, use the provided bin which falls back to `ts-node`.
+- If ESM/CJS issues arise in dev, run `npm run build` and use the installed/packaged CLI via `npx agent-orchestrator`.
 - To avoid slow verification during local e2e tests, set `AO_SKIP_VERIFY=1`.
 
 ## License

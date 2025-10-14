@@ -1,6 +1,9 @@
 import type { LLMAdapter } from '../../types/adapters';
 
-export function createOpenAICompatible(opts: { endpoint?: string; model?: string }): LLMAdapter {
+export function createOpenAICompatible(opts: {
+  endpoint?: string;
+  model?: string;
+}): LLMAdapter {
   const endpoint = opts.endpoint ?? 'http://localhost:8000/v1';
   const model = opts.model ?? 'gpt-oss:20b';
   return {

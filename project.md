@@ -7,6 +7,7 @@ This document explains the overall system architecture and runtime flow represen
 This project is an automated workflow for implementing specification-driven tasks using an agent (LLM or automated runner), with human review points and a feedback loop to schedule next tasks. The system alternates between automated runs and human checkpoints: it generates prompts, runs an agent to produce changes, evaluates results, updates a persistent `progress.md`, and either closes the task with changelogs and a PR or generates recommendations and re-runs. Auxiliary prompt-generators produce context, checklists, and templates that guide each stage.
 
 Key goals:
+
 - Automate task execution from a specification while maintaining human oversight.
 - Keep a single canonical progress artifact (`progress.md`) updated as the source of truth.
 - Produce audit artifacts (changelogs, commits/PRs) when requirements are met.

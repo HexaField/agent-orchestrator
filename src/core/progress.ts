@@ -3,13 +3,22 @@ import path from 'path';
 
 export async function readProgress(cwd: string): Promise<string> {
   const p = path.join(cwd, 'progress.md');
-  try { return await fs.readFile(p, 'utf8'); } catch { return ''; }
+  try {
+    return await fs.readFile(p, 'utf8');
+  } catch {
+    return '';
+  }
 }
 
-export async function updateStatusInProgress(cwd: string, status: string): Promise<void> {
+export async function updateStatusInProgress(
+  cwd: string,
+  status: string,
+): Promise<void> {
   const p = path.join(cwd, 'progress.md');
   let content = '';
-  try { content = await fs.readFile(p, 'utf8'); } catch {}
+  try {
+    content = await fs.readFile(p, 'utf8');
+  } catch {}
   const marker = '## Status';
   if (!content.includes(marker)) {
     content += `\n\n${marker}\n\n${status}\n`;
@@ -22,10 +31,16 @@ export async function updateStatusInProgress(cwd: string, status: string): Promi
   await fs.writeFile(p, content, 'utf8');
 }
 
-export async function setSection(cwd: string, heading: string, body: string): Promise<void> {
+export async function setSection(
+  cwd: string,
+  heading: string,
+  body: string,
+): Promise<void> {
   const p = path.join(cwd, 'progress.md');
   let content = '';
-  try { content = await fs.readFile(p, 'utf8'); } catch {}
+  try {
+    content = await fs.readFile(p, 'utf8');
+  } catch {}
   const marker = `## ${heading}`;
   if (!content.includes(marker)) {
     content += `\n\n${marker}\n\n${body}\n`;
@@ -38,10 +53,15 @@ export async function setSection(cwd: string, heading: string, body: string): Pr
   await fs.writeFile(p, content, 'utf8');
 }
 
-export async function updateChecklist(cwd: string, items: string[]): Promise<void> {
+export async function updateChecklist(
+  cwd: string,
+  items: string[],
+): Promise<void> {
   const p = path.join(cwd, 'progress.md');
   let content = '';
-  try { content = await fs.readFile(p, 'utf8'); } catch {}
+  try {
+    content = await fs.readFile(p, 'utf8');
+  } catch {}
   const begin = '<!-- CHECKLIST:BEGIN -->';
   const end = '<!-- CHECKLIST:END -->';
   const list = items.map((i) => `- [ ] ${i}`).join('\n');
@@ -59,11 +79,20 @@ export type ProgressPatch = {
   status?: string;
   clarifications?: string;
   decisions?: string;
-  nextTask?: { id: string; title: string; summary: string; acceptanceCriteria: string[]; createdAt: string } | null;
+  nextTask?: {
+    id: string;
+    title: string;
+    summary: string;
+    acceptanceCriteria: string[];
+    createdAt: string;
+  } | null;
   checklist?: string[];
 };
 
-export async function applyProgressPatch(cwd: string, patch: ProgressPatch): Promise<void> {
+export async function applyProgressPatch(
+  cwd: string,
+  patch: ProgressPatch,
+): Promise<void> {
   if (patch.status) {
     await updateStatusInProgress(cwd, patch.status);
   }

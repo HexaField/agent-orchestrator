@@ -1,4 +1,4 @@
-import { genChecklist } from '../core/templates';
+import { genChecklist } from '../core/templates.js';
 
 export function deriveChecklistFromSpec(spec: string): string[] {
   const items = genChecklist(spec);

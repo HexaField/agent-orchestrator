@@ -1,7 +1,7 @@
-import type { AgentAdapter } from '../../types/adapters';
-import { createCodexCli } from './codexCli';
-import { createCopilotCli } from './copilotCli';
-import { createCustom } from './custom';
+import type { AgentAdapter } from '../../types/adapters.js';
+import { createCodexCli } from './codexCli.js';
+import { createCopilotCli } from './copilotCli.js';
+import { createCustom } from './custom.js';
 
 export function getAgentAdapter(name: string): AgentAdapter {
   switch (name) {

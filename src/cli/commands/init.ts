@@ -6,7 +6,9 @@ import { genChecklist } from '../../core/templates';
 import { setState } from '../../core/orchestrator';
 
 const init = new Command('init')
-  .description('Initialize .agent/ and progress.md, derive initial checklist from spec.md')
+  .description(
+    'Initialize .agent/ and progress.md, derive initial checklist from spec.md',
+  )
   .option('--cwd <path>', 'Working directory', '.')
   .action(async (opts) => {
     const cwd = path.resolve(process.cwd(), opts.cwd ?? '.');
@@ -27,7 +29,13 @@ const init = new Command('init')
     const progressContent = `# Progress\n\n## Context\n\n\n## Clarifications\n\n\n## Checklist\n\n<!-- CHECKLIST:BEGIN -->\n${checklist.map((i) => `- [ ] ${i}`).join('\n')}\n<!-- CHECKLIST:END -->\n\n## Decisions\n\n\n## Status\n\ninitialized\n\n## Next Task\n\n`;
     await fs.writeFile(progressPath, progressContent, 'utf8');
 
-  await setState(cwd, { version: 1, currentRunId: null, status: 'idle', lastOutcome: 'none', nextTask: null } as any);
+    await setState(cwd, {
+      version: 1,
+      currentRunId: null,
+      status: 'idle',
+      lastOutcome: 'none',
+      nextTask: null,
+    } as any);
 
     // audit log file
     await fs.appendFile(path.join(agentDir, 'audit.log'), '', 'utf8');

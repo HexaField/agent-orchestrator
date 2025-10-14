@@ -7,7 +7,11 @@ export function createCopilotCli(): AgentAdapter {
     async run(input) {
       // Adjust to actual copilot CLI; placeholder uses gh copilot suggest
       const args = ['copilot', 'suggest', '--prompt', input.prompt];
-      return runCommand('gh', args, { cwd: input.cwd, timeoutMs: input.timeoutMs, env: input.env });
+      return runCommand('gh', args, {
+        cwd: input.cwd,
+        timeoutMs: input.timeoutMs,
+        env: input.env,
+      });
     },
   };
 }

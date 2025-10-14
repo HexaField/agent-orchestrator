@@ -13,15 +13,24 @@ const commit = new Command('commit')
     const cwd = path.resolve(process.cwd(), opts.cwd ?? '.');
     const state = await getState(cwd);
     if (state.status !== 'ready_to_commit') {
-      throw new Error(`Cannot commit: status is ${state.status}, require ready_to_commit`);
+      throw new Error(
+        `Cannot commit: status is ${state.status}, require ready_to_commit`,
+      );
     }
-    const rel = await writeChangelog(cwd, opts.branch ?? 'task', 'Automated changelog');
+    const rel = await writeChangelog(
+      cwd,
+      opts.branch ?? 'task',
+      'Automated changelog',
+    );
     // Attempt a simple commit if in a git repo
     try {
       await execa('git', ['add', '-A'], { cwd });
       const branch = opts.branch ?? `agent/${Date.now()}`;
       await execa('git', ['checkout', '-b', branch], { cwd, reject: false });
-      await execa('git', ['commit', '-m', `feat(agent): implement ${branch}`], { cwd, reject: false });
+      await execa('git', ['commit', '-m', `feat(agent): implement ${branch}`], {
+        cwd,
+        reject: false,
+      });
     } catch {
       // ignore if git not present
     }

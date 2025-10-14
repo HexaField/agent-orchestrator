@@ -3,13 +3,15 @@
   "version": "0.1.0",
   "description": "Spec-driven coding-agent orchestrator CLI with TDD and audit artifacts",
   "license": "MIT",
-  "type": "commonjs",
+  "type": "module",
   "bin": {
     "agent-orchestrator": "bin/agent-orchestrator"
   },
   "scripts": {
-    "build": "tsup src/cli/index.ts --format esm,cjs --dts",
-    "lint": "eslint .",
+    "build": "tsup src/cli/index.ts --format esm --dts",
+    "postbuild": "chmod +x ./bin/agent-orchestrator || true",
+    "lint": "eslint . --ext .ts --max-warnings=20",
+    "format:check": "prettier --check .",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
@@ -35,7 +37,6 @@
     "eslint": "^9.13.0",
     "eslint-config-prettier": "^9.1.0",
     "prettier": "^3.3.3",
-    "ts-node": "^10.9.2",
     "tsup": "^8.3.0",
     "typescript": "^5.6.3",
     "vitest": "^2.1.2"

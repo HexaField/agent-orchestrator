@@ -1,7 +1,10 @@
 import fs from 'fs-extra';
 import path from 'path';
 
-export async function withLock<T>(cwd: string, fn: () => Promise<T>): Promise<T> {
+export async function withLock<T>(
+  cwd: string,
+  fn: () => Promise<T>,
+): Promise<T> {
   const lockPath = path.join(cwd, '.agent', 'lock');
   await fs.ensureDir(path.dirname(lockPath));
   const exists = await fs.pathExists(lockPath);

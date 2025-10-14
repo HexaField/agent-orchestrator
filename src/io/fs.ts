@@ -20,7 +20,10 @@ export async function readJsonSafe<T>(file: string, fallback: T): Promise<T> {
   }
 }
 
-export async function writeFileAtomic(file: string, content: string): Promise<void> {
+export async function writeFileAtomic(
+  file: string,
+  content: string,
+): Promise<void> {
   await ensureDir(path.dirname(file));
   const tmp = file + '.tmp';
   await fs.writeFile(tmp, content, 'utf8');

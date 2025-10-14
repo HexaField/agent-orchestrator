@@ -8,7 +8,10 @@ const status = new Command('status')
   .option('--json', 'Output JSON', false)
   .action(async (opts) => {
     const cwd = path.resolve(process.cwd(), opts.cwd ?? '.');
-  const state: any = await readJsonSafe(path.join(cwd, '.agent', 'state.json'), {} as any);
+    const state: any = await readJsonSafe(
+      path.join(cwd, '.agent', 'state.json'),
+      {} as any,
+    );
     if (opts.json) {
       process.stdout.write(JSON.stringify(state, null, 2) + '\n');
     } else {

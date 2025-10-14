@@ -9,7 +9,9 @@ describe('adapters contracts', () => {
   });
 
   it('agent adapter executes CLI and propagates result', async () => {
-    const spy = vi.spyOn(shell, 'runCommand').mockResolvedValue({ stdout: 'ok', stderr: '', exitCode: 0 });
+    const spy = vi
+      .spyOn(shell, 'runCommand')
+      .mockResolvedValue({ stdout: 'ok', stderr: '', exitCode: 0 });
     const agent = createCodexCli();
     const res = await agent.run({ prompt: 'do x', cwd: process.cwd() });
     expect(res.exitCode).toBe(0);

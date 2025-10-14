@@ -1,5 +1,5 @@
 import { marked } from 'marked';
-import type { NextTask } from '../types/models';
+import type { NextTask } from '../types/models.js';
 
 export function genChecklist(spec: string): string[] {
   const text = spec || '';
@@ -38,7 +38,14 @@ export function genChange(): string {
   return 'Actionable change requests.';
 }
 
-export function genUpdate(result: { whatDone: 'spec_implemented' | 'completed_task' | 'needs_clarification' | 'failed'; verification?: any }): { progressPatch: import('./progress').ProgressPatch; status: string } {
+export function genUpdate(result: {
+  whatDone:
+    | 'spec_implemented'
+    | 'completed_task'
+    | 'needs_clarification'
+    | 'failed';
+  verification?: any;
+}): { progressPatch: import('./progress.js').ProgressPatch; status: string } {
   const statusMap: Record<string, string> = {
     spec_implemented: 'awaiting_review',
     completed_task: 'idle',
@@ -46,7 +53,7 @@ export function genUpdate(result: { whatDone: 'spec_implemented' | 'completed_ta
     failed: 'changes_requested',
   };
   const status = statusMap[result.whatDone] ?? 'idle';
-  const patch = { status } as import('./progress').ProgressPatch;
+  const patch = { status } as import('./progress.js').ProgressPatch;
   if (result.whatDone === 'needs_clarification') {
     patch.clarifications = 'Pending clarification questions.';
   }

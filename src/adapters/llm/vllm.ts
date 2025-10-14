@@ -1,6 +1,9 @@
 import type { LLMAdapter } from '../../types/adapters';
 
-export function createVllm(opts: { endpoint?: string; model?: string }): LLMAdapter {
+export function createVllm(opts: {
+  endpoint?: string;
+  model?: string;
+}): LLMAdapter {
   const endpoint = opts.endpoint ?? 'http://localhost:8000/v1';
   const model = opts.model ?? 'gpt-oss:20b';
   return {
@@ -26,7 +29,8 @@ export function createVllm(opts: { endpoint?: string; model?: string }): LLMAdap
         throw new Error(`LLM error ${res.status}`);
       }
       const json = (await res.json()) as any;
-      const text = json.choices?.[0]?.message?.content ?? json.choices?.[0]?.text ?? '';
+      const text =
+        json.choices?.[0]?.message?.content ?? json.choices?.[0]?.text ?? '';
       return { text, raw: json };
     },
   };

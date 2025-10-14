@@ -2,7 +2,9 @@ import { execa } from 'execa';
 
 const REDACT_KEYS = ['TOKEN', 'KEY', 'SECRET', 'PASSWORD'];
 
-export function redactEnv(env: Record<string, string | undefined>): Record<string, string> {
+export function redactEnv(
+  env: Record<string, string | undefined>,
+): Record<string, string> {
   const out: Record<string, string> = {};
   for (const [k, v] of Object.entries(env)) {
     if (v == null) continue;
@@ -16,7 +18,11 @@ export function redactEnv(env: Record<string, string | undefined>): Record<strin
   return out;
 }
 
-export async function runCommand(cmd: string, args: string[], opts: { cwd: string; timeoutMs?: number; env?: Record<string, string> }) {
+export async function runCommand(
+  cmd: string,
+  args: string[],
+  opts: { cwd: string; timeoutMs?: number; env?: Record<string, string> },
+) {
   const cp = execa(cmd, args, {
     cwd: opts.cwd,
     timeout: opts.timeoutMs ?? 10 * 60_000,
@@ -24,5 +30,9 @@ export async function runCommand(cmd: string, args: string[], opts: { cwd: strin
     reject: false,
   });
   const res = await cp;
-  return { stdout: res.stdout ?? '', stderr: res.stderr ?? '', exitCode: res.exitCode ?? 0 };
+  return {
+    stdout: res.stdout ?? '',
+    stderr: res.stderr ?? '',
+    exitCode: res.exitCode ?? 0,
+  };
 }
