@@ -8,7 +8,7 @@ import { runVerification } from '../validation/verify'
 import { routeWhatDone, whatDoneFromText } from './evaluation'
 import { withLock } from './locks'
 import { applyProgressPatch } from './progress'
-import { genNext } from './templates'
+import { genNext, genContext, genChecklist, genResponseType } from './templates'
 
 export async function getState(cwd: string): Promise<StateJsonV1> {
   const p = path.join(cwd, '.agent', 'state.json')
@@ -53,9 +53,22 @@ export async function runOnce(
     model?: string
     agent: string
     prompt?: string
+    force?: boolean
+    nonInteractive?: boolean
   }
 ) {
   return withLock(cwd, async () => {
+    // Respect human approval gating: if the orchestrator state is awaiting_approval
+    // a run should not proceed unless explicitly forced.
+    const current = await getState(cwd)
+    if (current.status === 'awaiting_approval' && !opts.force) {
+      if (opts.nonInteractive) {
+        throw new Error('Cannot run in non-interactive mode: awaiting human approval. Re-run with --force to override.')
+      }
+      // default behavior: block and require explicit --force to proceed
+      throw new Error('Cannot run: awaiting human approval. Re-run with --force to override.')
+    }
+
     const runId = newRunId()
     await setState(cwd, { currentRunId: runId, status: 'running' } as any)
     const startedAt = new Date().toISOString()
@@ -66,9 +79,27 @@ export async function runOnce(
     })
     const agent = getAgentAdapter(opts.agent)
 
+    // Build structured inputs for the run
+    let specText = ''
+    try {
+      specText = await fs.readFile(path.join(cwd, 'spec.md'), 'utf8')
+    } catch {}
+
+    const checklist = genChecklist(specText)
+    const contextPrompt = genContext()
+    const responseType = genResponseType()
+
     const initialAgentPrompt = opts.prompt ?? 'Implement the spec.'
+    // assemble LLM prompt with context and checklist
+    const llmPrompt = [
+      'Context:\n' + contextPrompt,
+      'Checklist:\n' + checklist.map((c) => `- ${c}`).join('\n'),
+      'ResponseType: ' + responseType,
+      'Instructions:\n' + initialAgentPrompt
+    ].join('\n\n')
+
     const llmOut = await llm.generate({
-      prompt: initialAgentPrompt,
+      prompt: llmPrompt,
       temperature: 0
     })
     const agentRes = await agent.run({
@@ -89,6 +120,15 @@ export async function runOnce(
       diffFull = await gitDiffFull({ cwd, maxChars: 20000 })
     } catch {}
 
+    // if spec implemented but verification failed, mark as failed/changes_requested
+    let finalWhat = what
+    if (what === 'spec_implemented') {
+      const v = verification || { lint: 'pass', typecheck: 'pass', tests: { passed: 0, failed: 0, coverage: 0 } }
+      if (v.lint !== 'pass' || v.typecheck !== 'pass' || (v.tests && v.tests.failed && v.tests.failed > 0)) {
+        finalWhat = 'failed'
+      }
+    }
+
     const runJson = {
       runId,
       startedAt,
@@ -98,14 +138,14 @@ export async function runOnce(
         model: opts.model ?? 'gpt-oss:20b',
         params: { temperature: 0 }
       },
-      inputs: { initialAgentPrompt, contextPrompts: [], checklist: [] },
+      inputs: { initialAgentPrompt, contextPrompts: [contextPrompt], checklist, responseType, llmPrompt },
       outputs: {
         patches: [],
         stdout: agentRes.stdout,
         stderr: agentRes.stderr,
         artifacts: []
       },
-      whatDone: what,
+  whatDone: finalWhat,
       verification,
       git: { files: diffFiles, diff: diffFull },
       review: {
@@ -116,11 +156,21 @@ export async function runOnce(
       endedAt,
       durationMs: new Date(endedAt).getTime() - new Date(startedAt).getTime()
     }
-    await recordRun(cwd, runId, runJson)
-    await routeOutcome(cwd, what)
+  await recordRun(cwd, runId, runJson)
+    // If the agent indicates clarifications are needed, generate clarifying
+    // questions and write them into progress.md, then set orchestrator state.
+  if (finalWhat === 'needs_clarification') {
+      try {
+        const clar = (await import('./templates')).genClarify()
+        await applyProgressPatch(cwd, { clarifications: clar })
+      } catch {
+        // ignore failures writing clarifications
+      }
+    }
+  await routeOutcome(cwd, finalWhat)
     // Apply structured progress patch
     const { genUpdate } = await import('./templates')
-    const upd = genUpdate({ whatDone: what, verification })
+  const upd = genUpdate({ whatDone: finalWhat, verification })
     await applyProgressPatch(cwd, upd.progressPatch)
     // audit
     const auditLine =
@@ -132,7 +182,7 @@ export async function runOnce(
       }) + '\n'
     await fs.appendFile(path.join(cwd, '.agent', 'audit.log'), auditLine, 'utf8')
     // nextTask heuristic
-    if (what === 'completed_task') {
+    if (finalWhat === 'completed_task') {
       const next = genNext()
       await setState(cwd, { nextTask: next } as any)
     }
