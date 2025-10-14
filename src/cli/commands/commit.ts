@@ -19,13 +19,15 @@ const commit = new Command('commit')
     const rel = await writeChangelog(cwd, opts.branch ?? 'task', 'Automated changelog')
     // Attempt a simple commit if in a git repo
     try {
-      await execa('git', ['add', '-A'], { cwd })
-      const branch = opts.branch ?? `agent/${Date.now()}`
-      await execa('git', ['checkout', '-b', branch], { cwd, reject: false })
-      await execa('git', ['commit', '-m', `feat(agent): implement ${branch}`], {
-        cwd,
-        reject: false
-      })
+      if (!(process.env.VITEST || process.env.VITEST_WORKER_ID || process.env.AO_DRY_RUN)) {
+        await execa('git', ['add', '-A'], { cwd })
+        const branch = opts.branch ?? `agent/${Date.now()}`
+        await execa('git', ['checkout', '-b', branch], { cwd, reject: false })
+        await execa('git', ['commit', '-m', `feat(agent): implement ${branch}`], {
+          cwd,
+          reject: false
+        })
+      }
     } catch {
       // ignore if git not present
     }
