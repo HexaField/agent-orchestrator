@@ -1,14 +1,14 @@
 import path from 'path';
-import { ensureDir, readJsonSafe, writeJsonAtomic } from '../io/fs.js';
-import type { StateJsonV1, WhatDone } from '../types/models.js';
-import { routeWhatDone, whatDoneFromText } from './evaluation.js';
-import { getLLMAdapter } from '../adapters/llm/index.js';
-import { getAgentAdapter } from '../adapters/agent/index.js';
-import { runVerification } from '../validation/verify.js';
-import { withLock } from './locks.js';
-import { updateStatusInProgress, applyProgressPatch } from './progress.js';
+import { ensureDir, readJsonSafe, writeJsonAtomic } from '../io/fs';
+import type { StateJsonV1, WhatDone } from '../types/models';
+import { routeWhatDone, whatDoneFromText } from './evaluation';
+import { getLLMAdapter } from '../adapters/llm/index';
+import { getAgentAdapter } from '../adapters/agent/index';
+import { runVerification } from '../validation/verify';
+import { withLock } from './locks';
+import { updateStatusInProgress, applyProgressPatch } from './progress';
 import { promises as fs } from 'fs';
-import { genNext } from './templates.js';
+import { genNext } from './templates';
 
 export async function getState(cwd: string): Promise<StateJsonV1> {
   const p = path.join(cwd, '.agent', 'state.json');
@@ -91,7 +91,7 @@ export async function runOnce(
     let diffFiles: string[] = [];
     let diffFull = '';
     try {
-      const { gitDiffNameOnly, gitDiffFull } = await import('../io/git.js');
+      const { gitDiffNameOnly, gitDiffFull } = await import('../io/git');
       diffFiles = await gitDiffNameOnly({ cwd });
       diffFull = await gitDiffFull({ cwd, maxChars: 20000 });
     } catch {}
@@ -126,7 +126,7 @@ export async function runOnce(
     await recordRun(cwd, runId, runJson);
     await routeOutcome(cwd, what);
     // Apply structured progress patch
-    const { genUpdate } = await import('./templates.js');
+    const { genUpdate } = await import('./templates');
     const upd = genUpdate({ whatDone: what, verification });
     await applyProgressPatch(cwd, upd.progressPatch);
     // audit

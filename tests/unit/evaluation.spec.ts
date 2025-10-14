@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { routeWhatDone, isValidWhatDone } from '../../src/core/evaluation.js';
+import { routeWhatDone, isValidWhatDone } from '../../src/core/evaluation';
 
 describe('core/evaluation', () => {
   it('isValidWhatDone allows only enums', () => {

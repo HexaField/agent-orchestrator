@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { deriveChecklistFromSpec } from '../../src/validation/checklist.js';
+import { deriveChecklistFromSpec } from '../../src/validation/checklist';
 
 describe('validation/checklist', () => {
   it('derives non-empty checklist from minimal spec', () => {

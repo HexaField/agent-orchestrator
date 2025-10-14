@@ -1,10 +1,10 @@
 import { Command } from 'commander';
-import initCmd from './commands/init.js';
-import runCmd from './commands/run.js';
-import approveCmd from './commands/approve.js';
-import reviewCmd from './commands/review.js';
-import statusCmd from './commands/status.js';
-import commitCmd from './commands/commit.js';
+import initCmd from './commands/init';
+import runCmd from './commands/run';
+import approveCmd from './commands/approve';
+import reviewCmd from './commands/review';
+import statusCmd from './commands/status';
+import commitCmd from './commands/commit';
 
 const program = new Command();
 program

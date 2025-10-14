@@ -1,4 +1,4 @@
-import type { OrchestratorStatus, WhatDone } from '../types/models.js';
+import type { OrchestratorStatus, WhatDone } from '../types/models';
 
 export function routeWhatDone(what: WhatDone): OrchestratorStatus {
   switch (what) {

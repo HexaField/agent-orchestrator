@@ -1,5 +1,5 @@
 import path from 'path';
-import { writeFileAtomic } from '../io/fs.js';
+import { writeFileAtomic } from '../io/fs';
 
 export async function writeChangelog(
   cwd: string,

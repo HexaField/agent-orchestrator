@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { createCodexCli } from '../../src/adapters/agent/codexCli.js';
-import * as shell from '../../src/io/shell.js';
-import { createVllm } from '../../src/adapters/llm/vllm.js';
+import { createCodexCli } from '../../src/adapters/agent/codexCli';
+import * as shell from '../../src/io/shell';
+import { createVllm } from '../../src/adapters/llm/vllm';
 
 describe('adapters contracts', () => {
   beforeEach(() => {

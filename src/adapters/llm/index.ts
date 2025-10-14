@@ -1,7 +1,7 @@
-import type { LLMAdapter } from '../../types/adapters.js';
-import { createVllm } from './vllm.js';
-import { createOpenAICompatible } from './openai-compatible.js';
-import { createPassthrough } from './passthrough.js';
+import type { LLMAdapter } from '../../types/adapters';
+import { createVllm } from './vllm';
+import { createOpenAICompatible } from './openai-compatible';
+import { createPassthrough } from './passthrough';
 
 export function getLLMAdapter(
   name: string,
