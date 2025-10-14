@@ -27,19 +27,24 @@ Quickstart (Codex agent + local vllm example)
 npx agent-orchestrator init --cwd .
 ```
 
-2) Configure the Codex-based agent (OpenAI Codex CLI) and a local `vllm` LLM provider
+2) Configure the Codex-based agent (OpenAI Codex CLI) and a local `vllm` or `ollama` LLM provider
 
 Prerequisites:
 - Install and configure a local `vllm` server or adapter according to the `vllm` adapter docs.
 - Ensure you have OpenAI credentials that allow access to Codex (if using remote Codex) or the `codex-cli` adapter configured to target your Codex-compatible service.
 
-Example environment variables (local vllm + Codex CLI):
+Example environment variables (local vllm or Ollama + Codex CLI):
 
 ```bash
 # If using the local vllm adapter the CLI expects AO_LLM_PROVIDER=vllm and
 # VLLM_SERVER_URL to point at your local vllm endpoint (example: http://localhost:8080)
 export AO_LLM_PROVIDER="vllm"
 export VLLM_SERVER_URL="http://localhost:8080"
+
+# If using Ollama locally set AO_LLM_PROVIDER=ollama and point OLLAMA_SERVER_URL
+# (or OLLAMA_API_BASE) at your Ollama HTTP endpoint (example: http://localhost:11434)
+export AO_LLM_PROVIDER="ollama"
+export OLLAMA_SERVER_URL="http://localhost:11434"
 
 # For the Codex agent (codex-cli adapter) configure the OpenAI API key or
 # other Codex-compatible credentials used by the adapter
@@ -76,7 +81,7 @@ Commands
 - `commit` — create a changelog, commit, and optionally open a PR (requires credentials)
 
 Adapters and configuration
-- LLM adapters: `vllm`, `openai-compatible`, `openai`, `passthrough`
+-- LLM adapters: `vllm`, `openai-compatible`, `openai`, `passthrough`, `ollama`
 - Agent adapters: `http`, `copilot-cli`, `codex-cli`, `custom`
 
 Set `AO_LLM_PROVIDER`, `AGENT`, or use CLI flags `--llm` and `--agent` to select adapters. For the HTTP agent set `AGENT_HTTP_ENDPOINT` to your agent server URL.

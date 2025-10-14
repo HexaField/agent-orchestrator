@@ -40,4 +40,12 @@ describe('codex-cli env mapping', () => {
     expect(calledEnv.FOO).toBe('bar')
     expect(calledEnv.OPENAI_API_BASE).toBeUndefined()
   })
+
+  it('falls back to OLLAMA_SERVER_URL', async () => {
+    const spy = vi.spyOn(shell, 'runCommand').mockResolvedValue({ stdout: 'ok', stderr: '', exitCode: 0 })
+    const agent = createCodexCli()
+    await agent.run({ prompt: 'x', cwd: process.cwd(), env: { OLLAMA_SERVER_URL: 'http://localhost:11434' } as any })
+    const calledEnv = (spy.mock.calls[0][2] as any).env
+    expect(calledEnv.OPENAI_API_BASE).toBe('http://localhost:11434')
+  })
 })

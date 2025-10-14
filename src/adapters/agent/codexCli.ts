@@ -12,8 +12,9 @@ export function createCodexCli(): AgentAdapter {
       // which many OpenAI-compatible CLIs (and Codex-compatible tooling) honor.
       const env = Object.assign({}, input.env)
 
-      // Priority: explicit CODEX_API_BASE -> VLLM_SERVER_URL -> LLM_ENDPOINT
-      const codeXBase = input.env?.CODEX_API_BASE || input.env?.VLLM_SERVER_URL || input.env?.LLM_ENDPOINT
+      // Priority: explicit CODEX_API_BASE -> OLLAMA_SERVER_URL/OLLAMA_API_BASE -> VLLM_SERVER_URL -> LLM_ENDPOINT
+      const codeXBase =
+        input.env?.CODEX_API_BASE || input.env?.OLLAMA_API_BASE || input.env?.OLLAMA_SERVER_URL || input.env?.VLLM_SERVER_URL || input.env?.LLM_ENDPOINT
       if (codeXBase) {
         // Ensure the URL looks like a base that the CLI expects (no path mangling).
         // If a path like /v1 was provided, keep it; otherwise the CLI will append paths.

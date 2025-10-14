@@ -31,6 +31,8 @@ Current adapters
 - `src/adapters/llm/vllm.ts` — (existing) adapter for local VLLM endpoints.
 - `src/adapters/llm/passthrough.ts` — test-only adapter.
 
+- `src/adapters/llm/ollama.ts` — adapter for local Ollama HTTP endpoints. See details below.
+
 - `src/adapters/agent/http.ts` — production-capable HTTP adapter: expects POST JSON `{ prompt }` and normalizes responses `{ stdout, stderr, exitCode }` (also accepts `text` as stdout). Configure endpoint via `AGENT_HTTP_ENDPOINT` in env or adapter `env`.
 - `src/adapters/agent/copilotCli.ts` — robust Copilot CLI wrapper; tries multiple invocation patterns and uses centralized `runCommand` for safety and testability.
 - `src/adapters/agent/custom.ts` — test adapter used by contract tests.
@@ -39,6 +41,18 @@ Adapter guidance
 - The HTTP agent should expose a small JSON API: POST / with { prompt }.
 - The response schema should include `stdout`, `stderr`, and `exitCode` or `text` (will be normalized to `stdout`).
 - Authentication: prefer Bearer tokens passed via `Authorization` header. The adapter accepts `AGENT_HTTP_ENDPOINT`—for more advanced setups, implement token rotation or per-run headers.
+
+Ollama adapter details
+
+- Purpose: support running a local Ollama HTTP model server as an LLM provider. The adapter is implemented in `src/adapters/llm/ollama.ts` and is selectable via `AO_LLM_PROVIDER=ollama` (or `--llm ollama`).
+- Defaults: endpoint `http://localhost:11434`, model `ollama:latest`.
+- Endpoint: the adapter POSTs JSON to `<endpoint>/api/generate` with a body `{ model, prompt, temperature, max_tokens, stop }`.
+- Response shapes supported: Ollama and OSS LLM servers vary; the adapter tries to extract text from common locations and returns `{ text, raw }`:
+  - `json.output[0].content` or `json.output[0].text` (common Ollama-like outputs)
+  - `json.choices[0].message.content` or `json.choices[0].text` (OpenAI-compatible responses)
+  - `json.result` or `json.output` as a top-level string
+- Usage: set `AO_LLM_PROVIDER=ollama` and `OLLAMA_SERVER_URL` (or `OLLAMA_API_BASE`) to point the Codex CLI (or other agents) to your Ollama server. The Codex CLI adapter will map `OLLAMA_*` env vars to `OPENAI_API_BASE` so existing OpenAI-compatible CLIs can target Ollama.
+
 
 ## Marker format and response types
 
