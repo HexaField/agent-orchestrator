@@ -18,7 +18,10 @@ export function createCustom(): AgentAdapter {
       if (low.includes('needs clarification')) {
         return { stdout: 'Needs Clarification', stderr: '', exitCode: 0 }
       }
-      return { stdout: 'Completed Task', stderr: '', exitCode: 0 }
+      // Default behavior for tests: echo the prompt so callers can simulate
+      // agent stdout by passing a prompt string (used with the passthrough
+      // LLM adapter in unit tests).
+      return { stdout: p, stderr: '', exitCode: 0 }
     }
   }
 }

@@ -98,3 +98,27 @@ export async function applyProgressPatch(cwd: string, patch: ProgressPatch): Pro
     await updateChecklist(cwd, patch.checklist)
   }
 }
+
+export async function readNextTaskAcceptanceCriteria(cwd: string): Promise<string[] | null> {
+  const p = path.join(cwd, 'progress.md')
+  let content = ''
+  try {
+    content = await fs.readFile(p, 'utf8')
+  } catch {
+    return null
+  }
+  const marker = '## Next Task'
+  if (!content.includes(marker)) return null
+  const [, rest] = content.split(marker)
+  // find 'Acceptance Criteria:' section within Next Task
+  const m = rest.match(/Acceptance Criteria:[\s\S]*?(?=\n## |$)/m)
+  if (!m) return null
+  const block = m[0]
+  const lines = block.split('\n').map((l) => l.trim())
+  const items: string[] = []
+  for (const line of lines) {
+    if (line.startsWith('- ')) items.push(line.slice(2).trim())
+    else if (line && !line.startsWith('Acceptance Criteria')) items.push(line)
+  }
+  return items.length ? items : null
+}

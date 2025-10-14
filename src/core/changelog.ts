@@ -17,27 +17,32 @@ export async function writeChangelog(cwd: string, task: string, content: string)
         await (await import('fs/promises')).readFile(path.join(runsDir, last, 'run.json'), 'utf8')
       )
       const runId = runJson.runId || last
-      verification = `\n\n## Run\n- runId: ${runId}\n- startedAt: ${runJson.startedAt}\n\n## Verification\n- lint: ${runJson.verification?.lint}\n- typecheck: ${runJson.verification?.typecheck}\n- tests: passed=${runJson.verification?.tests?.passed} failed=${runJson.verification?.tests?.failed}`
+      // build a compact verification summary
+      const testsPassed = runJson.verification?.tests?.passed ?? 0
+      const testsFailed = runJson.verification?.tests?.failed ?? 0
+      verification = `\n\n## Run\n- runId: ${runId}\n- startedAt: ${runJson.startedAt}\n\n## Verification\n- lint: ${runJson.verification?.lint ?? 'unknown'}\n- typecheck: ${runJson.verification?.typecheck ?? 'unknown'}\n- tests: passed=${testsPassed} failed=${testsFailed}`
       const gf = runJson.git
       if (gf) {
         const files = (gf.files || []).slice(0, 30)
         const filesList = files.map((f: string) => `- ${f}`).join('\n')
         // Truncate per-file diff preview to avoid huge changelogs
-        const maxCharsPerFile = 2000
+        const maxTotalChars = 8000
+        const maxPerFile = 1500
         let diffPreview = ''
         if (gf.diff) {
-          // attempt to split by file chunks if possible, otherwise truncate overall
           const d = String(gf.diff)
-          const small = d.length > maxCharsPerFile ? d.slice(0, maxCharsPerFile) + '\n...(truncated)' : d
-          diffPreview = `\n\n<details>\n<summary>Diff preview (truncated)</summary>\n\n\n${small}\n\n</details>`
+          // Attempt to keep per-file chunks when possible
+          let preview = d
+          if (d.length > maxTotalChars) preview = d.slice(0, maxTotalChars) + '\n\n...(truncated)'
+          // further truncate very long file hunks
+          if (preview.length > maxPerFile) preview = preview.slice(0, maxPerFile) + '\n\n...(truncated)'
+          diffPreview = `\n\n<details>\n<summary>Diff preview (truncated)</summary>\n\n${preview}\n\n</details>`
         }
         verification += `\n\n## Git changes\n${filesList}\n${diffPreview}`
       }
     }
   } catch {}
-  await writeFileAtomic(
-    p,
-    `---\ntask: ${task}\nrun: ${process.env.AO_RUN_ID ?? ''}\ncreatedAt: ${new Date().toISOString()}\n---\n\n${content}${verification}\n`
-  )
+  const header = `---\nformat: agent-orchestrator-v1\ntask: ${task}\nrun: ${process.env.AO_RUN_ID ?? ''}\ncreatedAt: ${new Date().toISOString()}\n---\n\n`
+  await writeFileAtomic(p, `${header}${content}${verification}\n`)
   return rel
 }

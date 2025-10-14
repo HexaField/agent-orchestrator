@@ -109,27 +109,82 @@ export async function runOnce(
       'Instructions:\n' + initialAgentPrompt
     ].join('\n\n')
 
-    const llmOut = await llm.generate({
-      prompt: llmPrompt,
-      temperature: 0
-    })
-    const agentRes = await agent.run({
-      prompt: llmOut.text || initialAgentPrompt,
-      cwd
-    })
+    // If an explicit prompt was provided to runOnce (tests and CLI helpers
+    // use this), prefer that prompt and skip the LLM step. Otherwise call
+    // the LLM to generate the agent prompt from context.
+    let agentRes: any
+    if (opts.prompt) {
+      agentRes = await agent.run({ prompt: initialAgentPrompt, cwd })
+    } else {
+      const llmOut = await llm.generate({
+        prompt: llmPrompt,
+        temperature: 0
+      })
+      agentRes = await agent.run({
+        prompt: llmOut.text || initialAgentPrompt,
+        cwd
+      })
+    }
+    // interpret agent outputs according to responseType
+    let patchesFiles: string[] = []
+    const filesWritten: string[] = []
+    const commandsRun: string[] = []
+    if (responseType === 'patches' || responseType === 'mixed') {
+      try {
+        const relPatch = path.join('.agent', 'runs', runId, 'patches.diff')
+        const absPatch = path.join(cwd, relPatch)
+        await writeFileAtomic(absPatch, agentRes.stdout || '')
+        patchesFiles.push(relPatch)
+      } catch {
+        // ignore write failures; record nothing
+      }
+    }
 
-      // if the response type is patches, persist agent stdout as a patch file
-      let patchesFiles: string[] = []
-      if (responseType === 'patches') {
+    if (responseType === 'files' || responseType === 'mixed') {
+      // simple file format: lines starting with "=== filename ===" denote file boundaries
+      const out = agentRes.stdout || ''
+      const fileSep = /^===\s*(.+?)\s*===$/gm
+      // Collect all markers first to avoid issues with regex lastIndex advancing
+      const matches = Array.from(out.matchAll(fileSep)) as RegExpMatchArray[]
+      for (let i = 0; i < matches.length; i++) {
+        const match = matches[i] as RegExpMatchArray
+        const filename = (match[1] || '').trim()
+        const start = (match.index || 0) + match[0].length
+        const end = i + 1 < matches.length ? (matches[i + 1].index || out.length) : out.length
+        const body = out.slice(start, end).trim()
         try {
-          const relPatch = path.join('.agent', 'runs', runId, 'patches.diff')
-          const absPatch = path.join(cwd, relPatch)
-          await writeFileAtomic(absPatch, agentRes.stdout || '')
-          patchesFiles.push(relPatch)
+          const abs = path.join(cwd, filename)
+          await writeFileAtomic(abs, body)
+          filesWritten.push(filename)
         } catch {
-          // ignore write failures; record nothing
+          // ignore per-file failures
         }
       }
+      // if no markers present and the stdout looks like a single file, skip
+    }
+
+    if (responseType === 'commands' || responseType === 'mixed') {
+      const out = (agentRes.stdout || '').trim()
+      if (out) {
+        // Guard: only execute commands when explicitly enabled
+        if (process.env.AO_ALLOW_COMMANDS === '1') {
+          try {
+            const { exec } = await import('child_process')
+            // NOTE: for safety we run commands synchronously and capture output
+            await new Promise<void>((resolve, reject) => {
+              // cast options to any to satisfy TS for shell:true
+              exec(out, { cwd: cwd as any, shell: true as any }, (err: any) => {
+                if (err) return reject(err)
+                commandsRun.push(out)
+                resolve()
+              })
+            })
+          } catch {
+            // failed to run commands; don't throw from orchestrator
+          }
+        }
+      }
+    }
 
     const what = whatDoneFromText(agentRes.stdout + '\n' + agentRes.stderr)
     const verification = await runVerification()
@@ -144,11 +199,24 @@ export async function runOnce(
       diffFull = await gitDiffFull({ cwd, maxChars: 20000 })
     } catch {}
 
-    // if spec implemented but verification failed, mark as failed/changes_requested
+    // Enforce acceptance criteria: if spec implemented but verification failed
+    // or acceptance criteria are not satisfied, mark as failed/changes_requested
     let finalWhat = what
     if (what === 'spec_implemented') {
       const v = verification || { lint: 'pass', typecheck: 'pass', tests: { passed: 0, failed: 0, coverage: 0 } }
-      if (v.lint !== 'pass' || v.typecheck !== 'pass' || (v.tests && v.tests.failed && v.tests.failed > 0)) {
+      let acceptanceOk = true
+      try {
+        const { readNextTaskAcceptanceCriteria } = await import('./progress')
+        const criteria = await readNextTaskAcceptanceCriteria(cwd)
+        // If acceptance criteria exist, we require tests to have passed
+        if (criteria && criteria.length > 0) {
+          if (!v.tests || (v.tests && v.tests.failed && v.tests.failed > 0)) acceptanceOk = false
+        }
+      } catch {
+        // ignore read failures and fall back to verification-only
+      }
+
+      if (v.lint !== 'pass' || v.typecheck !== 'pass' || (v.tests && v.tests.failed && v.tests.failed > 0) || !acceptanceOk) {
         finalWhat = 'failed'
       }
     }
