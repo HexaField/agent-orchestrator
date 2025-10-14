@@ -8,7 +8,7 @@ import { runVerification } from '../validation/verify'
 import { routeWhatDone, whatDoneFromText } from './evaluation'
 import { withLock } from './locks'
 import { applyProgressPatch } from './progress'
-import { genNext, genContext, genChecklist, genResponseType } from './templates'
+import { genNext, genChecklist, genResponseType } from './templates'
 import { writeFileAtomic } from '../io/fs'
 
 export async function getState(cwd: string): Promise<StateJsonV1> {
@@ -87,7 +87,8 @@ export async function runOnce(
     } catch {}
 
   const checklist = genChecklist(specText)
-  const contextPrompt = genContext(specText)
+  const { genContextAsync } = await import('./templates')
+  const contextPrompt = await genContextAsync(specText)
     const responseType = genResponseType()
 
     // if a reviewer previously requested changes, include the Recommendations
@@ -184,8 +185,9 @@ export async function runOnce(
     // questions and write them into progress.md, then set orchestrator state.
   if (finalWhat === 'needs_clarification') {
       try {
-        const clar = (await import('./templates')).genClarify(specText)
-        await applyProgressPatch(cwd, { clarifications: clar })
+  const { genClarifyAsync } = await import('./templates')
+  const clar = await genClarifyAsync(specText)
+  await applyProgressPatch(cwd, { clarifications: clar })
       } catch {
         // ignore failures writing clarifications
       }

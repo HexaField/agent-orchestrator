@@ -41,7 +41,7 @@ const commit = new Command('commit')
         process.stdout.write('pr: skipped (dry-run/test mode)\n')
         return
       }
-      // try gh CLI first
+      // try gh CLI first - prefer local tooling
       try {
         await execa('gh', ['pr', 'create', '--fill'], { cwd })
         process.stdout.write('pr: created with gh\n')
@@ -52,16 +52,20 @@ const commit = new Command('commit')
 
       const token = process.env.GITHUB_TOKEN
       if (!token) {
-        throw new Error('PR creation requested but neither `gh` CLI available nor GITHUB_TOKEN provided')
+        throw new Error('PR creation requested but neither `gh` CLI succeeded nor GITHUB_TOKEN provided')
       }
 
       try {
+        // ensure branch name exists locally and is pushed
+        const branch = opts.branch ?? `agent/${Date.now()}`
+        await execa('git', ['checkout', '-b', branch], { cwd, reject: false })
+        await execa('git', ['push', '-u', 'origin', branch], { cwd, reject: false })
+
         const { stdout: remote } = await execa('git', ['config', '--get', 'remote.origin.url'], { cwd })
         const m = remote.match(/[:/]([^/]+)\/([^/]+)(?:\.git)?$/)
         if (!m) throw new Error('Cannot parse git remote URL')
         const owner = m[1]
         const repo = m[2]
-        const branch = opts.branch ?? `agent/${Date.now()}`
         const body = JSON.stringify({ title: `Automated changelog: ${branch}`, head: branch, base: 'main', body: 'Automated changelog' })
         await execa('curl', ['-sS', '-X', 'POST', '-H', `Authorization: token ${token}`, '-H', 'Accept: application/vnd.github+json', `https://api.github.com/repos/${owner}/${repo}/pulls`, '-d', body], { cwd })
         process.stdout.write('pr: created via API\n')

@@ -1,5 +1,6 @@
 import { marked } from 'marked'
 import type { NextTask } from '../types/models'
+import { genContextLLM, genClarifyLLM, genChangeLLM } from './generatorClient'
 
 export function genChecklist(spec: string): string[] {
   const text = spec || ''
@@ -89,4 +90,51 @@ export function genNext(): NextTask {
     acceptanceCriteria: ['Done'],
     createdAt: new Date().toISOString()
   }
+}
+
+// Async LLM-backed wrappers (used when AO_USE_LLM_GEN=1)
+export async function genContextAsync(spec?: string): Promise<string> {
+  if (process.env.AO_USE_LLM_GEN !== '1') return genContext(spec)
+  const provider = process.env.AO_LLM_PROVIDER || 'passthrough'
+  return genContextLLM(provider, spec)
+}
+
+export async function genClarifyAsync(spec?: string): Promise<string> {
+  if (process.env.AO_USE_LLM_GEN !== '1') return genClarify(spec)
+  const provider = process.env.AO_LLM_PROVIDER || 'passthrough'
+  return genClarifyLLM(provider, spec)
+}
+
+export async function genChangeAsync(spec?: string, reason?: string): Promise<NextTask> {
+  if (process.env.AO_USE_LLM_GEN !== '1') return genChange(spec, reason)
+  const provider = process.env.AO_LLM_PROVIDER || 'passthrough'
+  const text = await genChangeLLM(provider, spec, reason)
+
+  // Attempt to extract JSON from the LLM response. LLMs sometimes wrap JSON in
+  // markdown code fences; handle that and parse safely.
+  const jsonMatch = text.match(/```json\n([\s\S]*?)\n```/) || text.match(/\{[\s\S]*\}/)
+  if (jsonMatch) {
+    const jsonText = jsonMatch[1] ? jsonMatch[1] : jsonMatch[0]
+    try {
+      const obj = JSON.parse(jsonText)
+      // Basic validation
+      if (obj && typeof obj.title === 'string' && typeof obj.summary === 'string') {
+        return {
+          id: obj.id || 'rec-' + Math.random().toString(36).slice(2, 8),
+          title: obj.title,
+          summary: obj.summary,
+          acceptanceCriteria: Array.isArray(obj.acceptanceCriteria) ? obj.acceptanceCriteria : ['Address review comments'],
+          createdAt: new Date().toISOString()
+        }
+      }
+    } catch {
+      // fallthrough to deterministic fallback below
+    }
+  }
+
+  // If we couldn't parse or validate JSON, emit a diagnostic summary in the
+  // title/summary while falling back to the deterministic generator.
+  const fallback = genChange(spec, reason)
+  fallback.summary = `LLM output could not be parsed as JSON. Fallback: ${fallback.summary}`
+  return fallback
 }

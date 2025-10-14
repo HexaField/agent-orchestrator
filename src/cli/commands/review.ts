@@ -1,7 +1,6 @@
 import { Command } from 'commander'
 import path from 'path'
 import { setState } from '../../core/orchestrator'
-import { genChange } from '../../core/templates'
 import { setSection } from '../../core/progress'
 
 const review = new Command('review')
@@ -16,7 +15,14 @@ const review = new Command('review')
     } else if (opts.requestChanges) {
       // synthesize recommended changes and write to progress.md and state
       try {
-        const rec = genChange()
+        let rec
+        if (process.env.AO_USE_LLM_GEN === '1') {
+          const { genChangeAsync } = await import('../../core/templates')
+          rec = await genChangeAsync(undefined, 'review')
+        } else {
+          const { genChange } = await import('../../core/templates')
+          rec = genChange()
+        }
         const body = `ID: ${rec.id}\nTitle: ${rec.title}\nSummary: ${rec.summary}\nAcceptance Criteria:\n${rec.acceptanceCriteria.map((c) => `- ${c}`).join('\n')}\nCreated: ${rec.createdAt}`
         await setSection(cwd, 'Recommendations', body)
         await setState(cwd, { status: 'changes_requested', nextTask: rec } as any)
