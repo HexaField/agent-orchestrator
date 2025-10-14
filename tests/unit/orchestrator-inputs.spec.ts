@@ -1,6 +1,6 @@
 import fs from 'fs-extra'
 import path from 'path'
-import { describe, it, expect, beforeEach, afterEach } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { runOnce } from '../../src/core/orchestrator'
 
 describe('run inputs recorded', () => {
@@ -16,7 +16,7 @@ describe('run inputs recorded', () => {
 
   it('records checklist, contextPrompts, responseType and llmPrompt in run.json', async () => {
     process.env.AO_SKIP_VERIFY = '1'
-    const res = await runOnce(tmp, { llm: 'passthrough', agent: 'custom', prompt: 'implement spec' , force: true })
+    const res = await runOnce(tmp, { llm: 'passthrough', agent: 'custom', prompt: 'implement spec', force: true })
     expect(res).toHaveProperty('runId')
     const runPath = path.join(tmp, '.agent', 'runs', res.runId, 'run.json')
     const runJson = JSON.parse(await fs.readFile(runPath, 'utf8'))

@@ -1,9 +1,9 @@
 import fs from 'fs-extra'
 import path from 'path'
-import { describe, it, expect, beforeEach, afterEach } from 'vitest'
-import { runOnce, getState } from '../../src/core/orchestrator'
-import { readProgress } from '../../src/core/progress'
+import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import clarifyCmd from '../../src/cli/commands/clarify'
+import { getState, runOnce } from '../../src/core/orchestrator'
+import { readProgress } from '../../src/core/progress'
 
 describe('clarification flow', () => {
   const tmp = path.join(__dirname, '.tmp-clarify')
@@ -19,7 +19,12 @@ describe('clarification flow', () => {
   it('run writes clarifications when agent requests them', async () => {
     process.env.AO_SKIP_VERIFY = '1'
     // Use a prompt that triggers the custom agent to return 'Needs Clarification'
-    const res = await runOnce(tmp, { llm: 'passthrough', agent: 'custom', prompt: 'this run needs clarification', force: true })
+    const res = await runOnce(tmp, {
+      llm: 'passthrough',
+      agent: 'custom',
+      prompt: 'this run needs clarification',
+      force: true
+    })
     expect(res.whatDone).toBe('needs_clarification')
     const progress = await readProgress(tmp)
     expect(progress).toContain('Clarifications')

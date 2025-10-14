@@ -1,6 +1,6 @@
 import fs from 'fs-extra'
 import path from 'path'
-import { describe, it, expect, beforeEach, afterEach } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { runOnce } from '../../src/core/orchestrator'
 
 describe('responseType files (malformed markers)', () => {
@@ -16,15 +16,15 @@ describe('responseType files (malformed markers)', () => {
   })
 
   it('writes only well-formed markers and ignores malformed/overlaps', async () => {
-  // Construct output with well-formed marker, a malformed marker (no closing),
-  // and an overlapping marker (empty filename). The malformed marker below is
-  // intentionally left without a closing '===' so it should be ignored.
-  const out = `=== good.txt ===\nThis is good\n=== malformed\nNo closing marker here\n=== ===\nShould be ignored\n=== another.md ===\n# Another\n`
+    // Construct output with well-formed marker, a malformed marker (no closing),
+    // and an overlapping marker (empty filename). The malformed marker below is
+    // intentionally left without a closing '===' so it should be ignored.
+    const out = `=== good.txt ===\nThis is good\n=== malformed\nNo closing marker here\n=== ===\nShould be ignored\n=== another.md ===\n# Another\n`
     await runOnce(tmp, { llm: 'passthrough', agent: 'custom', prompt: out })
 
     const g = path.join(tmp, 'good.txt')
     const a = path.join(tmp, 'another.md')
-  const bad = path.join(tmp, 'malformed')
+    const bad = path.join(tmp, 'malformed')
     // good and another should exist
     expect(await fs.pathExists(g)).toBe(true)
     expect((await fs.readFile(g, 'utf8')).trim()).toContain('This is good')

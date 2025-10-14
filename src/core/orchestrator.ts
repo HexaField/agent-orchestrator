@@ -2,14 +2,13 @@ import { promises as fs } from 'fs'
 import path from 'path'
 import { getAgentAdapter } from '../adapters/agent/index'
 import { getLLMAdapter } from '../adapters/llm/index'
-import { ensureDir, readJsonSafe, writeJsonAtomic } from '../io/fs'
+import { ensureDir, readJsonSafe, writeFileAtomic, writeJsonAtomic } from '../io/fs'
 import type { StateJsonV1, WhatDone } from '../types/models'
 import { runVerification } from '../validation/verify'
 import { routeWhatDone, whatDoneFromText } from './evaluation'
 import { withLock } from './locks'
 import { applyProgressPatch } from './progress'
-import { genNext, genChecklist, genResponseType } from './templates'
-import { writeFileAtomic } from '../io/fs'
+import { genChecklist, genNext, genResponseType } from './templates'
 
 export async function getState(cwd: string): Promise<StateJsonV1> {
   const p = path.join(cwd, '.agent', 'state.json')
@@ -86,9 +85,9 @@ export async function runOnce(
       specText = await fs.readFile(path.join(cwd, 'spec.md'), 'utf8')
     } catch {}
 
-  const checklist = genChecklist(specText)
-  const { genContextAsync } = await import('./templates')
-  const contextPrompt = await genContextAsync(specText)
+    const checklist = genChecklist(specText)
+    const { genContextAsync } = await import('./templates')
+    const contextPrompt = await genContextAsync(specText)
     const responseType = genResponseType()
 
     // if a reviewer previously requested changes, include the Recommendations
@@ -150,7 +149,7 @@ export async function runOnce(
         const match = matches[i] as RegExpMatchArray
         const filename = (match[1] || '').trim()
         const start = (match.index || 0) + match[0].length
-        const end = i + 1 < matches.length ? (matches[i + 1].index || out.length) : out.length
+        const end = i + 1 < matches.length ? matches[i + 1].index || out.length : out.length
         const body = out.slice(start, end).trim()
         try {
           const abs = path.join(cwd, filename)
@@ -216,7 +215,12 @@ export async function runOnce(
         // ignore read failures and fall back to verification-only
       }
 
-      if (v.lint !== 'pass' || v.typecheck !== 'pass' || (v.tests && v.tests.failed && v.tests.failed > 0) || !acceptanceOk) {
+      if (
+        v.lint !== 'pass' ||
+        v.typecheck !== 'pass' ||
+        (v.tests && v.tests.failed && v.tests.failed > 0) ||
+        !acceptanceOk
+      ) {
         finalWhat = 'failed'
       }
     }
@@ -230,14 +234,20 @@ export async function runOnce(
         model: opts.model ?? 'gpt-oss:20b',
         params: { temperature: 0 }
       },
-  inputs: { initialAgentPrompt, contextPrompts: [contextPrompt, ...extraContext], checklist, responseType, llmPrompt },
+      inputs: {
+        initialAgentPrompt,
+        contextPrompts: [contextPrompt, ...extraContext],
+        checklist,
+        responseType,
+        llmPrompt
+      },
       outputs: {
         patches: patchesFiles,
         stdout: agentRes.stdout,
         stderr: agentRes.stderr,
         artifacts: []
       },
-  whatDone: finalWhat,
+      whatDone: finalWhat,
       verification,
       git: { files: diffFiles, diff: diffFull },
       review: {
@@ -248,22 +258,22 @@ export async function runOnce(
       endedAt,
       durationMs: new Date(endedAt).getTime() - new Date(startedAt).getTime()
     }
-  await recordRun(cwd, runId, runJson)
+    await recordRun(cwd, runId, runJson)
     // If the agent indicates clarifications are needed, generate clarifying
     // questions and write them into progress.md, then set orchestrator state.
-  if (finalWhat === 'needs_clarification') {
+    if (finalWhat === 'needs_clarification') {
       try {
-  const { genClarifyAsync } = await import('./templates')
-  const clar = await genClarifyAsync(specText)
-  await applyProgressPatch(cwd, { clarifications: clar })
+        const { genClarifyAsync } = await import('./templates')
+        const clar = await genClarifyAsync(specText)
+        await applyProgressPatch(cwd, { clarifications: clar })
       } catch {
         // ignore failures writing clarifications
       }
     }
-  await routeOutcome(cwd, finalWhat)
+    await routeOutcome(cwd, finalWhat)
     // Apply structured progress patch
     const { genUpdate } = await import('./templates')
-  const upd = genUpdate({ whatDone: finalWhat, verification })
+    const upd = genUpdate({ whatDone: finalWhat, verification })
     await applyProgressPatch(cwd, upd.progressPatch)
     // audit
     const auditLine =

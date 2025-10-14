@@ -1,5 +1,5 @@
-import { describe, it, expect } from 'vitest'
-import { genChange, genNext, genResponseType, genContext, genClarify } from '../../src/core/templates'
+import { describe, expect, it } from 'vitest'
+import { genChange, genClarify, genContext, genNext, genResponseType } from '../../src/core/templates'
 
 describe('templates', () => {
   it('genChange returns NextTask shape', () => {

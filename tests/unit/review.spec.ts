@@ -1,9 +1,9 @@
 import fs from 'fs-extra'
 import path from 'path'
-import { describe, it, expect, beforeEach, afterEach } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import reviewCmd from '../../src/cli/commands/review'
-import { readProgress } from '../../src/core/progress'
 import { getState } from '../../src/core/orchestrator'
+import { readProgress } from '../../src/core/progress'
 
 describe('review command', () => {
   const tmp = path.join(__dirname, '.tmp-review')
@@ -20,10 +20,10 @@ describe('review command', () => {
     await reviewCmd.parseAsync(['node', 'review', '--cwd', tmp, '--request-changes'], { from: 'user' })
     const progress = await readProgress(tmp)
     expect(progress).toContain('Recommendations')
-  const st = await getState(tmp)
-  expect(st.status).toBe('changes_requested')
-  expect(st.nextTask).toBeTruthy()
-  expect(st.nextTask?.title).toContain('Recommended')
+    const st = await getState(tmp)
+    expect(st.status).toBe('changes_requested')
+    expect(st.nextTask).toBeTruthy()
+    expect(st.nextTask?.title).toContain('Recommended')
   })
 
   it('uses LLM-backed genChange when AO_USE_LLM_GEN=1', async () => {

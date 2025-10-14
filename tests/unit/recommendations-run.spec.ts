@@ -1,6 +1,6 @@
 import fs from 'fs-extra'
 import path from 'path'
-import { describe, it, expect, beforeEach, afterEach } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { runOnce, setState } from '../../src/core/orchestrator'
 
 describe('recommendations are used in run inputs', () => {
@@ -16,7 +16,15 @@ describe('recommendations are used in run inputs', () => {
 
   it('includes nextTask/recommendations in inputs when nextTask is set', async () => {
     // seed a nextTask in state
-    await setState(tmp, { nextTask: { id: 't1', title: 'Change X', summary: 'Please do X', acceptanceCriteria: ['X'], createdAt: new Date().toISOString() } } as any)
+    await setState(tmp, {
+      nextTask: {
+        id: 't1',
+        title: 'Change X',
+        summary: 'Please do X',
+        acceptanceCriteria: ['X'],
+        createdAt: new Date().toISOString()
+      }
+    } as any)
     process.env.AO_SKIP_VERIFY = '1'
     const res = await runOnce(tmp, { llm: 'passthrough', agent: 'custom', prompt: 'implement', force: true })
     expect(res.inputs).toBeDefined()

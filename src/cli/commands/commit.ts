@@ -66,8 +66,28 @@ const commit = new Command('commit')
         if (!m) throw new Error('Cannot parse git remote URL')
         const owner = m[1]
         const repo = m[2]
-        const body = JSON.stringify({ title: `Automated changelog: ${branch}`, head: branch, base: 'main', body: 'Automated changelog' })
-        await execa('curl', ['-sS', '-X', 'POST', '-H', `Authorization: token ${token}`, '-H', 'Accept: application/vnd.github+json', `https://api.github.com/repos/${owner}/${repo}/pulls`, '-d', body], { cwd })
+        const body = JSON.stringify({
+          title: `Automated changelog: ${branch}`,
+          head: branch,
+          base: 'main',
+          body: 'Automated changelog'
+        })
+        await execa(
+          'curl',
+          [
+            '-sS',
+            '-X',
+            'POST',
+            '-H',
+            `Authorization: token ${token}`,
+            '-H',
+            'Accept: application/vnd.github+json',
+            `https://api.github.com/repos/${owner}/${repo}/pulls`,
+            '-d',
+            body
+          ],
+          { cwd }
+        )
         process.stdout.write('pr: created via API\n')
       } catch (err) {
         throw new Error('PR creation failed: ' + String(err))

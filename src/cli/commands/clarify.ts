@@ -1,7 +1,7 @@
 import { Command } from 'commander'
 import path from 'path'
-import { applyProgressPatch } from '../../core/progress'
 import { setState } from '../../core/orchestrator'
+import { applyProgressPatch } from '../../core/progress'
 
 const clarify = new Command('clarify')
   .description('Apply clarification answers to progress.md and resume flow')

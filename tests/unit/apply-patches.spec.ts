@@ -1,6 +1,6 @@
 import fs from 'fs-extra'
 import path from 'path'
-import { describe, it, expect, beforeEach, afterEach } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { applyPatchesFromRun } from '../../src/core/patches'
 
 describe('apply patches helper', () => {

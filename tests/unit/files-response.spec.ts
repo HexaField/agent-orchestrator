@@ -1,6 +1,6 @@
 import fs from 'fs-extra'
 import path from 'path'
-import { describe, it, expect, beforeEach, afterEach } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { runOnce } from '../../src/core/orchestrator'
 
 describe('responseType files', () => {
@@ -20,7 +20,7 @@ describe('responseType files', () => {
     // craft a prompt that the custom agent will echo as patch markers
     const fileOut = '=== hello.txt ===\nHello World\n=== dir/note.md ===\n# Note\nContent'
     // run with agent custom and llm passthrough so agent receives prompt
-  await runOnce(tmp, { llm: 'passthrough', agent: 'custom', prompt: fileOut })
+    await runOnce(tmp, { llm: 'passthrough', agent: 'custom', prompt: fileOut })
     // files should be written
     const f1 = path.join(tmp, 'hello.txt')
     const f2 = path.join(tmp, 'dir', 'note.md')

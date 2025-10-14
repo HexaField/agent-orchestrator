@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import * as gc from '../../src/core/generatorClient'
 import { genChangeAsync } from '../../src/core/templates'
 
@@ -11,7 +11,11 @@ describe('genChangeAsync (LLM-backed)', () => {
   })
 
   it('parses valid JSON returned by LLM', async () => {
-    const json = JSON.stringify({ title: 'Fix tests', summary: 'Update assertions', acceptanceCriteria: ['All tests pass'] })
+    const json = JSON.stringify({
+      title: 'Fix tests',
+      summary: 'Update assertions',
+      acceptanceCriteria: ['All tests pass']
+    })
     vi.spyOn(gc, 'genChangeLLM').mockResolvedValue(json)
 
     const task = await genChangeAsync('# spec', 'reason')

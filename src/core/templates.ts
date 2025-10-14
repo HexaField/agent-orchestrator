@@ -1,6 +1,6 @@
 import { marked } from 'marked'
 import type { NextTask } from '../types/models'
-import { genContextLLM, genClarifyLLM, genChangeLLM } from './generatorClient'
+import { genChangeLLM, genClarifyLLM, genContextLLM } from './generatorClient'
 
 export function genChecklist(spec: string): string[] {
   const text = spec || ''
@@ -53,7 +53,9 @@ export function genClarify(spec?: string): string {
 export function genChange(spec?: string, reason?: string): import('../types/models').NextTask {
   const id = 'rec-' + Math.random().toString(36).slice(2, 8)
   const title = reason ? `Changes requested: ${reason}` : 'Recommended change'
-  const summary = spec ? `Please update the following based on the spec: ${spec.split('\n').slice(0, 2).join(' ')}` : 'Please address the requested changes in the review.'
+  const summary = spec
+    ? `Please update the following based on the spec: ${spec.split('\n').slice(0, 2).join(' ')}`
+    : 'Please address the requested changes in the review.'
   const acceptance = ['Address review comments']
   return {
     id,
@@ -123,7 +125,9 @@ export async function genChangeAsync(spec?: string, reason?: string): Promise<Ne
           id: obj.id || 'rec-' + Math.random().toString(36).slice(2, 8),
           title: obj.title,
           summary: obj.summary,
-          acceptanceCriteria: Array.isArray(obj.acceptanceCriteria) ? obj.acceptanceCriteria : ['Address review comments'],
+          acceptanceCriteria: Array.isArray(obj.acceptanceCriteria)
+            ? obj.acceptanceCriteria
+            : ['Address review comments'],
           createdAt: new Date().toISOString()
         }
       }

@@ -1,7 +1,7 @@
 import fs from 'fs-extra'
 import path from 'path'
-import { describe, it, expect, beforeEach, afterEach } from 'vitest'
-import { runOnce, setState, getState } from '../../src/core/orchestrator'
+import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { getState, runOnce, setState } from '../../src/core/orchestrator'
 
 describe('orchestrator approval gating', () => {
   const tmp = path.join(__dirname, '.tmp-approval')

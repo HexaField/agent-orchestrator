@@ -1,5 +1,5 @@
-import type { OrchestratorStatus, WhatDone } from '../types/models'
 import { getLLMAdapter } from '../adapters/llm'
+import type { OrchestratorStatus, WhatDone } from '../types/models'
 
 export function routeWhatDone(what: WhatDone): OrchestratorStatus {
   switch (what) {
@@ -66,8 +66,26 @@ function ruleBasedWhatDone(text: string): WhatDone {
 
   // preserve prior behavior: if there are both positive and negative
   // signals in the text, prefer 'needs_clarification'
-  const positiveKeywords = ['spec implemented', 'implemented the spec', 'all requirements met', 'requirements satisfied', 'passes tests', 'tests passed', 'completed task', 'task completed', '\bdone\b']
-  const negativeKeywords = ['failed', 'failing', 'tests failed', 'type error', 'lint failed', 'not implemented', 'error']
+  const positiveKeywords = [
+    'spec implemented',
+    'implemented the spec',
+    'all requirements met',
+    'requirements satisfied',
+    'passes tests',
+    'tests passed',
+    'completed task',
+    'task completed',
+    '\bdone\b'
+  ]
+  const negativeKeywords = [
+    'failed',
+    'failing',
+    'tests failed',
+    'type error',
+    'lint failed',
+    'not implemented',
+    'error'
+  ]
   const hasPositive = positiveKeywords.some((k) => t.includes(k))
   const hasNegative = negativeKeywords.some((k) => t.includes(k))
   if (hasPositive && hasNegative) return 'needs_clarification'
@@ -97,10 +115,13 @@ export async function whatDoneFromTextAsync(text: string): Promise<WhatDone> {
     const prompt = `Classify the following agent run output into one of: spec_implemented, completed_task, needs_clarification, failed. Respond with only the label.\n\nOutput:\n${text}`
     const out = await llm.generate({ prompt, temperature: 0 })
     const t = (out.text || '').toLowerCase()
-    if (t.includes('spec_implemented') || t.includes('spec implemented') || t.includes('implemented')) return 'spec_implemented'
+    if (t.includes('spec_implemented') || t.includes('spec implemented') || t.includes('implemented'))
+      return 'spec_implemented'
     if (t.includes('completed_task') || t.includes('task completed') || t.includes('\bdone\b')) return 'completed_task'
-    if (t.includes('needs_clarification') || t.includes('clarify') || t.includes('please clarify')) return 'needs_clarification'
-    if (t.includes('failed') || t.includes('failing') || t.includes('tests failed') || t.includes('error')) return 'failed'
+    if (t.includes('needs_clarification') || t.includes('clarify') || t.includes('please clarify'))
+      return 'needs_clarification'
+    if (t.includes('failed') || t.includes('failing') || t.includes('tests failed') || t.includes('error'))
+      return 'failed'
   } catch {
     // fall through to rule-based
   }

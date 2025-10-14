@@ -1,13 +1,13 @@
 import fs from 'fs-extra'
 import path from 'path'
-import { describe, it, expect, beforeEach, afterEach } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 // we'll import runOnce dynamically after stubbing runVerification
 
 // We'll stub runVerification by setting AO_SKIP_VERIFY=undefined and
 // mocking the imported runVerification at runtime isn't trivial without changing code.
 // Instead, we'll rely on the runOnce logic: when whatDone is 'spec_implemented' it
 // checks verification object. To simulate a failing verification, we'll monkeypatch
-// the validation module by writing a small shim file into node's require cache. 
+// the validation module by writing a small shim file into node's require cache.
 
 describe('orchestrator verification downgrade', () => {
   const tmp = path.join(__dirname, '.tmp-verify')
@@ -40,7 +40,12 @@ describe('orchestrator verification downgrade', () => {
 
     // Now import orchestrator (after the stub is in place) so it pulls our stubbed verifier
     const orchestrator = await import('../../src/core/orchestrator')
-    const res = await orchestrator.runOnce(tmp, { llm: 'passthrough', agent: 'custom', prompt: 'spec implemented', force: true })
+    const res = await orchestrator.runOnce(tmp, {
+      llm: 'passthrough',
+      agent: 'custom',
+      prompt: 'spec implemented',
+      force: true
+    })
     expect(res.whatDone).not.toBe('spec_implemented')
     expect(res.whatDone).toBe('failed')
   })
