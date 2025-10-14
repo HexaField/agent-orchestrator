@@ -36,6 +36,7 @@ const commit = new Command('commit')
     if (opts.pr) {
       // In test environments or when AO_DRY_RUN is set, skip actual PR creation
       if (process.env.VITEST || process.env.VITEST_WORKER_ID || process.env.AO_DRY_RUN) {
+        console.log('\n\n\n\n\nDEBUG\n\n\n\n\n\n')
         process.stdout.write('pr: skipped (dry-run/test mode)\n')
         return
       }
