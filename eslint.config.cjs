@@ -17,7 +17,7 @@ module.exports = [
       '@typescript-eslint': tseslint
     },
     rules: {
-      semi: ['error', 'always'],
+      semi: 'never',
       quotes: ['error', 'single'],
       '@typescript-eslint/no-unused-vars': ['warn'],
       '@typescript-eslint/explicit-function-return-type': ['off']
