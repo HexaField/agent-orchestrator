@@ -1,114 +1,94 @@
 # Agent Orchestrator
 
-A spec-driven coding agent orchestrator CLI that automates TDD workflows, maintains audit artifacts, and enforces review/commit gates.
+A spec-driven orchestration CLI that coordinates LLMs and external agents to implement and verify changes against a project spec. It records a reproducible audit trail under `.agent/` and enforces verification and review gates before changes are accepted.
 
-## Features
+Key goals
+- Run repeatable agent-driven iterations: generate a change, apply it as a patch, run verification, and update `progress.md`.
+- Keep detailed run artifacts and preserved rejections for auditability.
+- Provide safe defaults (dry-run and test hooks) so you can evaluate behavior before enabling real command execution.
 
-- Orchestrated agent runs with pluggable LLM and agent adapters
-- Spec-first flow with progress.md as source of truth
-- Verification pipeline (npm scripts) with deterministic test mode
-- Review and commit gating with changelog generation
-- Audit trail of runs under `.agent/`
+Install
 
-## Install
-
-Clone and install dependencies:
+Install globally to use the `agent-orchestrator` CLI, or use `npx` for ephemeral runs:
 
 ```bash
-npm install
+# Global
+npm install -g agent-orchestrator
+
+# Or using npx (preferred for ad-hoc runs)
+npx agent-orchestrator <command> --cwd .
 ```
 
-Node.js 18+ required.
+Quickstart (Codex agent + local vllm example)
 
-## Quick start
-
-Initialize a repo for orchestration and run once using test-friendly adapters:
+1) Initialize a repository for the orchestrator
 
 ```bash
-# 1) initialize (via npx from the project root)
 npx agent-orchestrator init --cwd .
-
-# 2) run once with passthrough LLM and custom agent
-AO_SKIP_VERIFY=1 npx agent-orchestrator run --cwd . --llm passthrough --agent custom --prompt "implement spec"
-
-# 3) check status
-npx agent-orchestrator status --cwd .
 ```
 
-## Commands
+2) Configure the Codex-based agent (OpenAI Codex CLI) and a local `vllm` LLM provider
 
-- `init` — Bootstraps `.agent/` directory, creates `progress.md`, initializes state
-- `run` — Executes one orchestrated iteration (LLM → Agent → verify → update progress/changelog)
-- `review` — Mark review result: `--approve` or `--request-changes`
-- `status` — Print current orchestrator status
-- `commit` — Gate-protected commit once status is `ready_to_commit`
+Prerequisites:
+- Install and configure a local `vllm` server or adapter according to the `vllm` adapter docs.
+- Ensure you have OpenAI credentials that allow access to Codex (if using remote Codex) or the `codex-cli` adapter configured to target your Codex-compatible service.
 
-Run `--help` on any command for options.
+Example environment variables (local vllm + Codex CLI):
 
-## Adapters
+```bash
+# If using the local vllm adapter the CLI expects AO_LLM_PROVIDER=vllm and
+# VLLM_SERVER_URL to point at your local vllm endpoint (example: http://localhost:8080)
+export AO_LLM_PROVIDER="vllm"
+export VLLM_SERVER_URL="http://localhost:8080"
 
-- LLM: `vllm`, `openai-compatible`, `passthrough`
-- Agent: `copilot-cli`, `codex-cli`, `custom`
+# For the Codex agent (codex-cli adapter) configure the OpenAI API key or
+# other Codex-compatible credentials used by the adapter
+export OPENAI_API_KEY="sk_..."
+```
 
-Configure via flags or project config. The `passthrough`/`custom` pair is used in tests to avoid network access.
+3) Run the orchestrator (preview or execute)
 
-## Progress and artifacts
+Preview (safe): shows what would happen without executing shell commands. Use the `codex-cli` agent and the `vllm` LLM provider:
 
-- `.agent/state.json` — orchestrator state machine
-- `.agent/runs/run-*/run.json` — per-run metadata, results, verification summary
-- `.agent/audit.log` — append-only run log
-- `progress.md` — contains machine-editable sections:
-  - Status, Clarifications, Decisions, Next Task, Checklist
+```bash
+npx agent-orchestrator run --cwd . --agent codex-cli --llm vllm --prompt "Implement the user login feature"
+```
 
-The orchestrator patches `progress.md` on each run based on outcomes.
+Execute (real changes): enable command execution only when you trust the environment and adapters.
 
-### Marker format and response types
+```bash
+AO_ALLOW_COMMANDS=1 npx agent-orchestrator run --cwd . --agent codex-cli --llm vllm --prompt "Implement the user login feature"
+```
 
-- File responses are parsed from agent stdout using a simple marker format. Use lines of the form:
+4) Check the orchestrator status and inspect run artifacts
 
-  === filename.ext ===
+```bash
+npx agent-orchestrator status --cwd .
+npx agent-orchestrator show-run <runId> --cwd .   # show run metadata
+npx agent-orchestrator list-rejections <runId> --cwd .  # list preserved .rej files (if any)
+```
 
-  followed by the file contents until the next marker. Only well-formed markers (exact opening and closing `===` with a filename) will be written. Malformed or empty markers are ignored.
+Commands
+- `init` — bootstrap `.agent/`, create `progress.md`, initialize state
+- `run` — execute one orchestrated iteration (LLM → Agent → verify → patch apply)
+- `status` — print current status
+- `review` — record review actions (`--approve` / `--request-changes`)
+- `commit` — create a changelog, commit, and optionally open a PR (requires credentials)
 
-- Response types are controlled by the `AO_RESPONSE_TYPE` environment variable (one of `patches|files|commands|mixed`). By default the system uses `mixed` behavior.
+Adapters and configuration
+- LLM adapters: `vllm`, `openai-compatible`, `openai`, `passthrough`
+- Agent adapters: `http`, `copilot-cli`, `codex-cli`, `custom`
 
-### Patch apply failures and .rej preservation
+Set `AO_LLM_PROVIDER`, `AGENT`, or use CLI flags `--llm` and `--agent` to select adapters. For the HTTP agent set `AGENT_HTTP_ENDPOINT` to your agent server URL.
 
-- When `git apply --reject` produces `.rej` files (patch rejects), the orchestrator preserves those `.rej` files for audit. They are copied into the run artifact folder and recorded in the run's `applied.marker` diagnostics.
+Safety & test hooks
+- `AO_ALLOW_COMMANDS` — must be set to `1` for the orchestrator to execute shell commands produced by agents (disabled by default).
+- `AO_DRY_RUN` — simulate command execution (no side-effects).
+- `MOCK_RUN_COMMAND` — internal test hook (JSON) used by tests to simulate `runCommand` responses.
 
-  - Non-git fallback: `.rej` files are copied to `.agent/runs/<runId>/rejections/` and listed in the in-repo `applied.marker`.
-  - Git transactional failures: rejections are copied to the OS temp runs dir (e.g. `${os.tmpdir()}/agent-orchestrator/runs/<runId>/rejections`) to avoid leaving untracked files in the working tree; their relative paths are included in the `applied.marker` written to that location.
+More details
+For a deep dive into architecture, adapters, marker formats, `.rej` handling, and operational guidance, see `architecture.md`.
 
-  This preserves audit information while keeping the working tree clean. You can inspect preserved rejections by reading the `applied.marker` JSON from the run artifact.
-
-### Important environment flags
-
-- `AO_ALLOW_COMMANDS=1` — allow the orchestrator to actually execute command responses (disabled by default for safety in tests/CI).
-- `AO_DRY_RUN=1` — enable dry-run behavior for command execution (simulated outputs).
-- `MOCK_RUN_COMMAND` — internal test hook that allows deterministic simulation of command outputs (JSON encoded).
-- `AO_USE_LLM_GEN=1` — opt-in to LLM-backed prompt generators (otherwise deterministic generators are used).
-- `AO_LLM_PROVIDER` — choose the LLM provider for generation when `AO_USE_LLM_GEN=1`.
-
-## Verification
-
-If `package.json` contains common scripts (e.g., `test`, `typecheck`, `lint`), the verifier will run them. During Vitest or with `AO_SKIP_VERIFY=1`, verification is skipped to avoid recursion.
-
-## Development
-
-- Tests: `npm test` or `npm run e2e`
-- Typecheck: `npm run typecheck`
-- Lint: `npm run lint`
-- Build: `npm run build`
-
-## CI
-
-This repo includes a GitHub Actions workflow that runs typecheck and tests on pushes and pull requests. See `.github/workflows/ci.yml`.
-
-## Troubleshooting
-
-- If ESM/CJS issues arise in dev, run `npm run build` and use the installed/packaged CLI via `npx agent-orchestrator`.
-- To avoid slow verification during local e2e tests, set `AO_SKIP_VERIFY=1`.
-
-## License
+License
 
 MIT
