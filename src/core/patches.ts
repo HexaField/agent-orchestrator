@@ -3,6 +3,49 @@ import fs from 'fs-extra'
 import os from 'os'
 import path from 'path'
 
+async function findRejFiles(dir: string): Promise<string[]> {
+  const results: string[] = []
+  async function walk(p: string) {
+    let items: string[] = []
+    try {
+      items = await fs.readdir(p)
+    } catch {
+      return
+    }
+    for (const name of items) {
+      const fp = path.join(p, name)
+      let st
+      try {
+        st = await fs.stat(fp)
+      } catch {
+        continue
+      }
+      if (st.isDirectory()) {
+        await walk(fp)
+      } else if (name.endsWith('.rej')) {
+        results.push(fp)
+      }
+    }
+  }
+  await walk(dir)
+  return results
+}
+
+async function copyRejFiles(rejFiles: string[], destDir: string, cwd: string): Promise<string[]> {
+  const rels: string[] = []
+  await fs.ensureDir(destDir)
+  for (const f of rejFiles) {
+    const rel = path.relative(cwd, f)
+    const dest = path.join(destDir, rel)
+    await fs.ensureDir(path.dirname(dest))
+    try {
+      await fs.copyFile(f, dest)
+      rels.push(rel)
+    } catch {}
+  }
+  return rels
+}
+
 async function runCmd(command: string, cwd: string): Promise<{ code: number | null; stdout: string; stderr: string }> {
   return new Promise((resolve) => {
     exec(command, { cwd, maxBuffer: 10 * 1024 * 1024 }, (err, stdout, stderr) => {
@@ -33,13 +76,20 @@ export async function applyPatchesFromRun(cwd: string, runId: string): Promise<{
       if (res.code === 0) return { applied: true, path: p }
     }
     try {
+      const runsRejDir = path.join(cwd, '.agent', 'runs', runId, 'rejections')
+      const rejFiles = await findRejFiles(cwd)
+      let rejRels: string[] = []
+      if (rejFiles.length > 0) {
+        rejRels = await copyRejFiles(rejFiles, runsRejDir, cwd)
+      }
       const marker = path.join(cwd, '.agent', 'runs', runId, 'applied.marker')
-      const data = {
+      const data: any = {
         applied: false,
         message: 'failed-to-apply',
         attempts: attempts.map((a) => ({ cmd: a.cmd, code: a.code, stderr: a.stderr.slice(0, 10 * 1024), stdout: a.stdout.slice(0, 10 * 1024) })),
         timestamp: new Date().toISOString()
       }
+      if (rejRels.length > 0) data.rejections = rejRels
       await fs.ensureDir(path.dirname(marker))
       await fs.writeJson(marker, data, { spaces: 2 })
       return { applied: false, path: marker }
@@ -84,6 +134,14 @@ export async function applyPatchesFromRun(cwd: string, runId: string): Promise<{
     }
 
     // failed on all attempts -> rollback
+    // before cleaning up, preserve any .rej files created by git apply --reject
+    const rejFiles = await findRejFiles(cwd)
+    if (rejFiles.length > 0) {
+      const outRejDir = path.join(os.tmpdir(), 'agent-orchestrator', 'runs', runId, 'rejections')
+      try {
+        await copyRejFiles(rejFiles, outRejDir, cwd)
+      } catch {}
+    }
     await runCmd(`git checkout "${origBranch}"`, cwd)
     // ensure no partial index / worktree
     await runCmd('git reset --hard', cwd)
@@ -110,12 +168,30 @@ export async function applyPatchesFromRun(cwd: string, runId: string): Promise<{
     const outDir = path.join(os.tmpdir(), 'agent-orchestrator', 'runs', runId)
     await fs.ensureDir(outDir)
     const marker = path.join(outDir, 'applied.marker')
-    const data = {
+    const data: any = {
       applied: false,
       message: 'failed-to-apply',
       attempts: attempts.map((a) => ({ cmd: a.cmd, code: a.code, stderr: a.stderr.slice(0, 10 * 1024), stdout: a.stdout.slice(0, 10 * 1024) })),
       timestamp: new Date().toISOString()
     }
+    // include any preserved rejections from the outDir location
+    try {
+      const rejDir = path.join(outDir, 'rejections')
+      if (await fs.pathExists(rejDir)) {
+        const walk: string[] = []
+        async function collect(p: string) {
+          const items = await fs.readdir(p)
+          for (const name of items) {
+            const fp = path.join(p, name)
+            const st = await fs.stat(fp)
+            if (st.isDirectory()) await collect(fp)
+            else walk.push(path.relative(outDir, fp))
+          }
+        }
+        await collect(rejDir)
+        if (walk.length > 0) data.rejections = walk
+      }
+    } catch {}
     await fs.writeJson(marker, data, { spaces: 2 })
     // delete temp branch if it exists
     try {

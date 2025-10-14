@@ -62,6 +62,33 @@ Configure via flags or project config. The `passthrough`/`custom` pair is used i
 
 The orchestrator patches `progress.md` on each run based on outcomes.
 
+### Marker format and response types
+
+- File responses are parsed from agent stdout using a simple marker format. Use lines of the form:
+
+  === filename.ext ===
+
+  followed by the file contents until the next marker. Only well-formed markers (exact opening and closing `===` with a filename) will be written. Malformed or empty markers are ignored.
+
+- Response types are controlled by the `AO_RESPONSE_TYPE` environment variable (one of `patches|files|commands|mixed`). By default the system uses `mixed` behavior.
+
+### Patch apply failures and .rej preservation
+
+- When `git apply --reject` produces `.rej` files (patch rejects), the orchestrator preserves those `.rej` files for audit. They are copied into the run artifact folder and recorded in the run's `applied.marker` diagnostics.
+
+  - Non-git fallback: `.rej` files are copied to `.agent/runs/<runId>/rejections/` and listed in the in-repo `applied.marker`.
+  - Git transactional failures: rejections are copied to the OS temp runs dir (e.g. `${os.tmpdir()}/agent-orchestrator/runs/<runId>/rejections`) to avoid leaving untracked files in the working tree; their relative paths are included in the `applied.marker` written to that location.
+
+  This preserves audit information while keeping the working tree clean. You can inspect preserved rejections by reading the `applied.marker` JSON from the run artifact.
+
+### Important environment flags
+
+- `AO_ALLOW_COMMANDS=1` — allow the orchestrator to actually execute command responses (disabled by default for safety in tests/CI).
+- `AO_DRY_RUN=1` — enable dry-run behavior for command execution (simulated outputs).
+- `MOCK_RUN_COMMAND` — internal test hook that allows deterministic simulation of command outputs (JSON encoded).
+- `AO_USE_LLM_GEN=1` — opt-in to LLM-backed prompt generators (otherwise deterministic generators are used).
+- `AO_LLM_PROVIDER` — choose the LLM provider for generation when `AO_USE_LLM_GEN=1`.
+
 ## Verification
 
 If `package.json` contains common scripts (e.g., `test`, `typecheck`, `lint`), the verifier will run them. During Vitest or with `AO_SKIP_VERIFY=1`, verification is skipped to avoid recursion.
