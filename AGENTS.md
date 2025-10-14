@@ -1,0 +1,1 @@
+Upon completing a task, ALWAYS update ./project.md to check off the changes made.

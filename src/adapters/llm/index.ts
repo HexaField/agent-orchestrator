@@ -1,5 +1,6 @@
 import type { LLMAdapter } from '../../types/adapters'
 import { createOpenAICompatible } from './openai-compatible'
+import { createOpenAI } from './openai'
 import { createPassthrough } from './passthrough'
 import { createVllm } from './vllm'
 
@@ -12,6 +13,8 @@ export function getLLMAdapter(name: string, opts: { endpoint?: string; model?: s
         endpoint: opts.endpoint,
         model: opts.model
       })
+    case 'openai':
+      return createOpenAI({ endpoint: opts.endpoint, model: opts.model })
     case 'passthrough':
       return createPassthrough()
     default:

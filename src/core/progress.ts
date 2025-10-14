@@ -80,7 +80,8 @@ export async function applyProgressPatch(cwd: string, patch: ProgressPatch): Pro
   }
   if (patch.nextTask) {
     const nt = patch.nextTask
-    const text = `ID: ${nt.id}\nTitle: ${nt.title}\nSummary: ${nt.summary}\nAcceptance Criteria:\n${nt.acceptanceCriteria.map((c) => `- ${c}`).join('\n')}\nCreated: ${nt.createdAt}`
+    const ac = validateAcceptanceCriteria(nt.acceptanceCriteria)
+    const text = `ID: ${nt.id}\nTitle: ${nt.title}\nSummary: ${nt.summary}\nAcceptance Criteria:\n${ac.map((c) => `- ${c}`).join('\n')}\nCreated: ${nt.createdAt}`
     await writeSectionAtomic(cwd, 'Next Task', text)
   }
   if (patch.checklist) {
@@ -101,6 +102,15 @@ export async function applyProgressPatch(cwd: string, patch: ProgressPatch): Pro
       await writeSectionAtomic(cwd, 'Checklist', block)
     }
   }
+}
+
+export function validateAcceptanceCriteria(items: string[] | undefined | null): string[] {
+  if (!items) return []
+  const cleaned = items
+    .map((s) => (s || '').trim())
+    .filter(Boolean)
+    .slice(0, 20)
+  return cleaned
 }
 
 export async function readNextTaskAcceptanceCriteria(cwd: string): Promise<string[] | null> {

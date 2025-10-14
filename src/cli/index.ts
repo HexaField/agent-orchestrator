@@ -7,6 +7,8 @@ import runCmd from './commands/run'
 import statusCmd from './commands/status'
 import presentCmd from './commands/present'
 import clarifyCmd from './commands/clarify'
+import showRunCmd from './commands/show-run'
+import listRejectionsCmd from './commands/list-rejections'
 
 const program = new Command()
 program.name('agent-orchestrator').description('Spec-driven coding-agent orchestrator CLI').version('0.1.0')
@@ -19,5 +21,7 @@ program.addCommand(statusCmd)
 program.addCommand(commitCmd)
 program.addCommand(presentCmd)
 program.addCommand(clarifyCmd)
+program.addCommand(showRunCmd)
+program.addCommand(listRejectionsCmd)
 
 program.parseAsync(process.argv)
