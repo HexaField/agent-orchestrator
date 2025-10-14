@@ -34,6 +34,11 @@ const commit = new Command('commit')
     process.stdout.write(`changelog: ${rel}\n`)
 
     if (opts.pr) {
+      // In test environments or when AO_DRY_RUN is set, skip actual PR creation
+      if (process.env.VITEST || process.env.VITEST_WORKER_ID || process.env.AO_DRY_RUN) {
+        process.stdout.write('pr: skipped (dry-run/test mode)\n')
+        return
+      }
       // try gh CLI first
       try {
         await execa('gh', ['pr', 'create', '--fill'], { cwd })
