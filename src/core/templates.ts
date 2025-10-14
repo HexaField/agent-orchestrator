@@ -38,8 +38,19 @@ export function genChange(): string {
   return 'Actionable change requests.';
 }
 
-export function genUpdate(): { progressPatch: string; status: string } {
-  return { progressPatch: '', status: 'updated' };
+export function genUpdate(result: { whatDone: 'spec_implemented' | 'completed_task' | 'needs_clarification' | 'failed'; verification?: any }): { progressPatch: import('./progress').ProgressPatch; status: string } {
+  const statusMap: Record<string, string> = {
+    spec_implemented: 'awaiting_review',
+    completed_task: 'idle',
+    needs_clarification: 'needs_clarification',
+    failed: 'changes_requested',
+  };
+  const status = statusMap[result.whatDone] ?? 'idle';
+  const patch = { status } as import('./progress').ProgressPatch;
+  if (result.whatDone === 'needs_clarification') {
+    patch.clarifications = 'Pending clarification questions.';
+  }
+  return { progressPatch: patch, status };
 }
 
 export function genNext(): NextTask {

@@ -6,7 +6,7 @@ import { getLLMAdapter } from '../adapters/llm/index';
 import { getAgentAdapter } from '../adapters/agent/index';
 import { runVerification } from '../validation/verify';
 import { withLock } from './locks';
-import { updateStatusInProgress } from './progress';
+import { updateStatusInProgress, applyProgressPatch } from './progress';
 import { promises as fs } from 'fs';
 import { genNext } from './templates';
 
@@ -75,9 +75,12 @@ export async function runOnce(cwd: string, opts: { llm: string; endpoint?: strin
       endedAt,
       durationMs: new Date(endedAt).getTime() - new Date(startedAt).getTime(),
     };
-    await recordRun(cwd, runId, runJson);
-    await routeOutcome(cwd, what);
-    await updateStatusInProgress(cwd, routeWhatDone(what));
+  await recordRun(cwd, runId, runJson);
+  await routeOutcome(cwd, what);
+  // Apply structured progress patch
+  const { genUpdate } = await import('./templates');
+  const upd = genUpdate({ whatDone: what, verification });
+  await applyProgressPatch(cwd, upd.progressPatch);
     // audit
     const auditLine = JSON.stringify({ ts: new Date().toISOString(), runId, what, status: routeWhatDone(what) }) + '\n';
     await fs.appendFile(path.join(cwd, '.agent', 'audit.log'), auditLine, 'utf8');
