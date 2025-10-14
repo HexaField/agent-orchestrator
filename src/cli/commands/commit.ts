@@ -36,7 +36,7 @@ const commit = new Command('commit')
     if (opts.pr) {
       // try gh CLI first
       try {
-        await execa('gh', ['pr', 'create', '--fill'], { cwd, reject: false })
+        await execa('gh', ['pr', 'create', '--fill'], { cwd })
         process.stdout.write('pr: created with gh\n')
         return
       } catch {
