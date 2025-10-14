@@ -120,6 +120,15 @@ export async function runOnce(
       diffFull = await gitDiffFull({ cwd, maxChars: 20000 })
     } catch {}
 
+    // if spec implemented but verification failed, mark as failed/changes_requested
+    let finalWhat = what
+    if (what === 'spec_implemented') {
+      const v = verification || { lint: 'pass', typecheck: 'pass', tests: { passed: 0, failed: 0, coverage: 0 } }
+      if (v.lint !== 'pass' || v.typecheck !== 'pass' || (v.tests && v.tests.failed && v.tests.failed > 0)) {
+        finalWhat = 'failed'
+      }
+    }
+
     const runJson = {
       runId,
       startedAt,
@@ -136,7 +145,7 @@ export async function runOnce(
         stderr: agentRes.stderr,
         artifacts: []
       },
-      whatDone: what,
+  whatDone: finalWhat,
       verification,
       git: { files: diffFiles, diff: diffFull },
       review: {
@@ -147,10 +156,10 @@ export async function runOnce(
       endedAt,
       durationMs: new Date(endedAt).getTime() - new Date(startedAt).getTime()
     }
-    await recordRun(cwd, runId, runJson)
+  await recordRun(cwd, runId, runJson)
     // If the agent indicates clarifications are needed, generate clarifying
     // questions and write them into progress.md, then set orchestrator state.
-    if (what === 'needs_clarification') {
+  if (finalWhat === 'needs_clarification') {
       try {
         const clar = (await import('./templates')).genClarify()
         await applyProgressPatch(cwd, { clarifications: clar })
@@ -158,10 +167,10 @@ export async function runOnce(
         // ignore failures writing clarifications
       }
     }
-    await routeOutcome(cwd, what)
+  await routeOutcome(cwd, finalWhat)
     // Apply structured progress patch
     const { genUpdate } = await import('./templates')
-    const upd = genUpdate({ whatDone: what, verification })
+  const upd = genUpdate({ whatDone: finalWhat, verification })
     await applyProgressPatch(cwd, upd.progressPatch)
     // audit
     const auditLine =
@@ -173,7 +182,7 @@ export async function runOnce(
       }) + '\n'
     await fs.appendFile(path.join(cwd, '.agent', 'audit.log'), auditLine, 'utf8')
     // nextTask heuristic
-    if (what === 'completed_task') {
+    if (finalWhat === 'completed_task') {
       const next = genNext()
       await setState(cwd, { nextTask: next } as any)
     }
