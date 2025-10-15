@@ -20,7 +20,7 @@ describe('patches output', () => {
   })
 
   it('writes patches.diff when responseType=patches and agent emits PATCH:', async () => {
-  await seedConfigFor(tmp, { RESPONSE_TYPE: 'patches', SKIP_VERIFY: '1' })
+    await seedConfigFor(tmp, { RESPONSE_TYPE: 'patches', SKIP_VERIFY: '1' })
     const res = await runOnce(tmp, {
       llm: 'passthrough',
       agent: 'custom',

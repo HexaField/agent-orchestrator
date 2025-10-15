@@ -173,7 +173,7 @@ describe('E2E Ollama gpt-oss:20b (openai-compatible) suite', () => {
       // override the endpoint for the suite to use the stub
       ;(global as any).__AO_E2E_STUB = stub
       return
-  } catch {
+    } catch {
       // if we can't start a stub, fall back to checking for a local Ollama
       const ok = await isPortOpen(OLLAMA_HOST, OLLAMA_PORT, 1000)
       if (!ok) skippable = true

@@ -28,7 +28,7 @@ describe('orchestrator verification downgrade', () => {
     // when prompt includes 'spec implemented' - easier approach: call runOnce with custom
     // agent that returns stdout indicating spec_implemented. The adapters in tests are
     // simple; here we rely on the 'custom' adapter implementation in repo to behave.
-  await seedConfigFor(tmp, { SKIP_VERIFY: '' })
+    await seedConfigFor(tmp, { SKIP_VERIFY: '' })
     // To simulate failing verification, write a stub validation/verify.ts that returns failing results.
     const verifyPath = path.join(__dirname, '..', '..', 'src', 'validation', 'verify.ts')
     await fs.ensureDir(path.dirname(verifyPath))

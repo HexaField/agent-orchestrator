@@ -198,8 +198,8 @@ export async function runOnce(
     }
 
     const what = whatDoneFromText(agentRes.stdout + '\n' + agentRes.stderr)
-  // Run verification, which itself will inspect the project config and
-  // honor SKIP_VERIFY when present.
+    // Run verification, which itself will inspect the project config and
+    // honor SKIP_VERIFY when present.
     const verification = await runVerification(cwd)
 
     const endedAt = new Date().toISOString()

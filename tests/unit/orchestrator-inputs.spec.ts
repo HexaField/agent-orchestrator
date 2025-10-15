@@ -16,7 +16,7 @@ describe('run inputs recorded', () => {
   })
 
   it('records checklist, contextPrompts, responseType and llmPrompt in run.json', async () => {
-  await seedConfigFor(tmp, { SKIP_VERIFY: '1' })
+    await seedConfigFor(tmp, { SKIP_VERIFY: '1' })
     const res = await runOnce(tmp, { llm: 'passthrough', agent: 'custom', prompt: 'implement spec', force: true })
     expect(res).toHaveProperty('runId')
     const runPath = path.join(tmp, '.agent', 'runs', res.runId, 'run.json')

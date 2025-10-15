@@ -8,8 +8,8 @@ export function createReplayAgent(): AgentAdapter {
     async run(input) {
       // Allow tests to select which fixture via AO_REPLAY_FIXTURE env or default to the bundled one
       // Prefer explicit input.env override, otherwise read the project config fixture
-  // prefer explicit per-invocation env override (REPLAY_FIXTURE), then project config, then default
-  let fixture = String(input.env?.REPLAY_FIXTURE ?? '')
+      // prefer explicit per-invocation env override (REPLAY_FIXTURE), then project config, then default
+      let fixture = String(input.env?.REPLAY_FIXTURE ?? '')
       try {
         const { readProjectConfig } = await import('../../config')
         const cfg = await readProjectConfig(input.cwd || '.')

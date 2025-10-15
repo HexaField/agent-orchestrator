@@ -30,7 +30,7 @@ describe('responseType commands (mocked)', () => {
     expect(await fs.pathExists(path.join(tmp, 'cmd.txt'))).toBe(false)
 
     // Now mock child_process.exec and enable commands
-  await seedConfigFor(tmp, { ALLOW_COMMANDS: '1' })
+    await seedConfigFor(tmp, { ALLOW_COMMANDS: '1' })
 
     const touch2 = `node -e \"require('fs').writeFileSync('cmd2.txt','ok')\"`
     // re-import runOnce (dynamic import inside test ensures orchestrator will dynamic-import our mocked module)

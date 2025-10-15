@@ -32,7 +32,7 @@ describe('automated review heuristics', () => {
     await fs.remove(tmp)
     await fs.ensureDir(tmp)
     await fs.ensureDir(path.join(tmp, '.agent'))
-  await seedConfigFor(tmp, { USE_LLM_REVIEW: '1', LLM_PROVIDER: 'passthrough' })
+    await seedConfigFor(tmp, { USE_LLM_REVIEW: '1', LLM_PROVIDER: 'passthrough' })
     // monkey patch getLLMAdapter to return a neutral LLM that does not echo the prompt
     vi.spyOn(llmIndex, 'getLLMAdapter').mockImplementation(
       () =>

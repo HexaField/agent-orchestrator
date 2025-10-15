@@ -19,7 +19,7 @@ describe('patches output handling', () => {
   })
 
   it('writes patches.diff when responseType=patches and agent emits PATCH:', async () => {
-  await seedConfigFor(tmp, { RESPONSE_TYPE: 'patches', SKIP_VERIFY: '1' })
+    await seedConfigFor(tmp, { RESPONSE_TYPE: 'patches', SKIP_VERIFY: '1' })
     const prompt = 'PATCH:\ndiff --git a/file b/file\n+hello'
     const res = await runOnce(tmp, { llm: 'passthrough', agent: 'custom', prompt, force: true })
     expect(res).toHaveProperty('runId')

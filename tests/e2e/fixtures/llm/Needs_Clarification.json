@@ -2,5 +2,7 @@
   "id": "stub-clarify-1",
   "object": "response",
   "model": "stub-model",
-  "choices": [{ "text": "Needs Clarification\nPlease clarify the acceptance criteria.", "index": 0, "finish_reason": "stop" }]
+  "choices": [
+    { "text": "Needs Clarification\nPlease clarify the acceptance criteria.", "index": 0, "finish_reason": "stop" }
+  ]
 }

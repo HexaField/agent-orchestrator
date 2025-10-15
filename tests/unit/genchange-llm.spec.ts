@@ -13,7 +13,7 @@ describe('genChangeAsync (LLM-backed)', () => {
     await fs.remove(tmp)
     await fs.ensureDir(tmp)
     await fs.ensureDir(path.join(tmp, '.agent'))
-  await seedConfigFor(tmp, { USE_LLM_GEN: '1', LLM_PROVIDER: 'passthrough' })
+    await seedConfigFor(tmp, { USE_LLM_GEN: '1', LLM_PROVIDER: 'passthrough' })
     // change cwd for template call which uses process.cwd() when reading .agent
     process.chdir(tmp)
   })

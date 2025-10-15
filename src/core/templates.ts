@@ -124,10 +124,10 @@ export async function genContextAsync(spec?: string): Promise<string> {
 export async function genClarifyAsync(spec?: string): Promise<string> {
   try {
     const { ensureProjectConfig, readProjectConfig } = await import('../config')
-  const cfg = (await readProjectConfig(process.cwd())) || (await ensureProjectConfig(process.cwd()))
-  if (!cfg || !(cfg as any).USE_LLM_GEN) return genClarify(spec)
-  const provider = (cfg as any).LLM_PROVIDER || 'passthrough'
-  return genClarifyLLM(provider, spec)
+    const cfg = (await readProjectConfig(process.cwd())) || (await ensureProjectConfig(process.cwd()))
+    if (!cfg || !(cfg as any).USE_LLM_GEN) return genClarify(spec)
+    const provider = (cfg as any).LLM_PROVIDER || 'passthrough'
+    return genClarifyLLM(provider, spec)
   } catch {
     return genClarify(spec)
   }
@@ -137,9 +137,9 @@ export async function genChangeAsync(spec?: string, reason?: string): Promise<Ne
   // Use project config only to decide if we call the LLM for generation
   try {
     const { ensureProjectConfig, readProjectConfig } = await import('../config')
-  const cfg = (await readProjectConfig(process.cwd())) || (await ensureProjectConfig(process.cwd()))
-  if (!cfg || !(cfg as any).USE_LLM_GEN) return genChange(spec, reason)
-  const provider = (cfg as any).LLM_PROVIDER || 'passthrough'
+    const cfg = (await readProjectConfig(process.cwd())) || (await ensureProjectConfig(process.cwd()))
+    if (!cfg || !(cfg as any).USE_LLM_GEN) return genChange(spec, reason)
+    const provider = (cfg as any).LLM_PROVIDER || 'passthrough'
     try {
       const text = await genChangeLLM(provider, spec, reason)
       const jsonMatch = text.match(/```json\n([\s\S]*?)\n```/) || text.match(/\{[\s\S]*\}/)

@@ -9,7 +9,7 @@ export function createCodexCli(): AgentAdapter {
     name: 'codex-cli',
     async run(input) {
       // Prefer to run the `exec` subcommand which is the non-interactive one-shot mode
-  let model = input.env?.LLM_MODEL
+      let model = input.env?.LLM_MODEL
       try {
         const cfg = await readProjectConfig(input.cwd || '.')
         if (cfg && cfg.LLM_MODEL) model = model || cfg.LLM_MODEL
@@ -57,8 +57,8 @@ export function createCodexCli(): AgentAdapter {
       // permission when running tests with the real `codex` CLI.
       let finalPrompt = input.prompt || ''
       try {
-  // prefer explicit per-invocation env, otherwise fall back to project config
-  let allowCommands = String(input.env?.ALLOW_COMMANDS ?? '')
+        // prefer explicit per-invocation env, otherwise fall back to project config
+        let allowCommands = String(input.env?.ALLOW_COMMANDS ?? '')
         try {
           const cfg = await readProjectConfig(input.cwd || '.')
           if (allowCommands.trim() === '') allowCommands = String((cfg as any).ALLOW_COMMANDS ?? '')
@@ -92,8 +92,8 @@ export function createCodexCli(): AgentAdapter {
         } catch {}
         // compute debug and allow flags from input.env or project config
         // derive debug and allow flags: prefer input.env then project config
-  let debugCodeX = String(input.env?.DEBUG_CODEX ?? '')
-  let allowFlag = String(input.env?.ALLOW_COMMANDS ?? '')
+        let debugCodeX = String(input.env?.DEBUG_CODEX ?? '')
+        let allowFlag = String(input.env?.ALLOW_COMMANDS ?? '')
         try {
           const { readProjectConfig } = await import('../../config')
           const cfg = await readProjectConfig(input.cwd || '.')
@@ -117,7 +117,7 @@ export function createCodexCli(): AgentAdapter {
         // ignore write errors
       }
 
-  if (input.env && input.env['DEBUG_CODEX'] === '1') {
+      if (input.env && input.env['DEBUG_CODEX'] === '1') {
         console.error('DEBUG codex-cli args=', JSON.stringify(args))
         console.error(
           'DEBUG codex-cli OPENAI_API_BASE=',

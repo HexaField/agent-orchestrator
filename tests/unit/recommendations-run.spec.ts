@@ -26,7 +26,7 @@ describe('recommendations are used in run inputs', () => {
         createdAt: new Date().toISOString()
       }
     } as any)
-  await seedConfigFor(tmp, { SKIP_VERIFY: '1' })
+    await seedConfigFor(tmp, { SKIP_VERIFY: '1' })
     const res = await runOnce(tmp, { llm: 'passthrough', agent: 'custom', prompt: 'implement', force: true })
     expect(res.inputs).toBeDefined()
     expect(Array.isArray(res.inputs.contextPrompts)).toBe(true)

@@ -1,7 +1,7 @@
-import http from 'http'
-import type { IncomingMessage, ServerResponse } from 'http'
-import { AddressInfo } from 'net'
 import fs from 'fs'
+import type { IncomingMessage, ServerResponse } from 'http'
+import http from 'http'
+import { AddressInfo } from 'net'
 import path from 'path'
 
 // Minimal LLM stub for tests. Start with provider-aware responses for
@@ -43,7 +43,10 @@ export async function startStub(port = 0): Promise<StubServer> {
 
       // Provider-specific shapes: support simple OpenAI-compatible and
       // Ollama flows. Look for prompt in common fields.
-      const prompt = (body.prompt || (body.messages && body.messages.map((m: any) => m.content).join('\n')) || body.input || '') as string
+      const prompt = (body.prompt ||
+        (body.messages && body.messages.map((m: any) => m.content).join('\n')) ||
+        body.input ||
+        '') as string
 
       // Try to load a fixture matching the prompt, else return a default
       const fx = loadFixture(prompt)

@@ -18,7 +18,7 @@ describe('clarification flow', () => {
   })
 
   it('run writes clarifications when agent requests them', async () => {
-  await seedConfigFor(tmp, { SKIP_VERIFY: '1' })
+    await seedConfigFor(tmp, { SKIP_VERIFY: '1' })
     // Use a prompt that triggers the custom agent to return 'Needs Clarification'
     const res = await runOnce(tmp, {
       llm: 'passthrough',

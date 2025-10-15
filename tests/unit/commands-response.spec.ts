@@ -17,7 +17,7 @@ describe('responseType commands', () => {
   })
 
   it('runs commands when AO_ALLOW_COMMANDS=1', async () => {
-  await seedConfigFor(tmp, { ALLOW_COMMANDS: '1' })
+    await seedConfigFor(tmp, { ALLOW_COMMANDS: '1' })
     // use a harmless echo command; custom agent will echo prompt
     const cmd = 'echo hello-from-agent'
     await runOnce(tmp, { llm: 'passthrough', agent: 'custom', prompt: cmd })

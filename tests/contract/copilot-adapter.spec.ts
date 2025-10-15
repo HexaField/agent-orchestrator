@@ -16,7 +16,7 @@ describe('Copilot CLI adapter', () => {
   })
 
   it('uses primary copilot command when available', async () => {
-  await seedConfigFor(tmpRoot, { ALLOW_COMMANDS: '1' })
+    await seedConfigFor(tmpRoot, { ALLOW_COMMANDS: '1' })
     process.env.MOCK_RUN_COMMAND = JSON.stringify({ stdout: 'copilot-ok', stderr: '', exitCode: 0 })
     const a = createCopilotCli()
     const res = await a.run({ prompt: 'x', cwd: tmpRoot, timeoutMs: 2000 })
@@ -25,7 +25,7 @@ describe('Copilot CLI adapter', () => {
   })
 
   it('falls back to gh copilot when primary fails', async () => {
-  await seedConfigFor(tmpRoot, { ALLOW_COMMANDS: '1' })
+    await seedConfigFor(tmpRoot, { ALLOW_COMMANDS: '1' })
     // First run simulate failure
     process.env.MOCK_RUN_COMMAND = JSON.stringify({ stdout: '', stderr: 'not found', exitCode: 1 })
     const a = createCopilotCli()
@@ -40,7 +40,7 @@ describe('Copilot CLI adapter', () => {
   })
 
   it('returns helpful stderr when no CLI available', async () => {
-  await seedConfigFor(tmpRoot, { ALLOW_COMMANDS: '1' })
+    await seedConfigFor(tmpRoot, { ALLOW_COMMANDS: '1' })
     process.env.MOCK_RUN_COMMAND = JSON.stringify({ stdout: '', stderr: 'not found', exitCode: 1 })
     const a = createCopilotCli()
     const res = await a.run({ prompt: 'x', cwd: tmpRoot, timeoutMs: 2000 })
