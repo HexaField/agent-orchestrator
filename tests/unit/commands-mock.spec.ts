@@ -21,7 +21,7 @@ describe('responseType commands (mocked)', () => {
     await fs.remove(tmp)
   })
 
-  it('does not run commands when AO_ALLOW_COMMANDS!=1 and mocks exec when enabled', async () => {
+  it('does not run commands when ALLOW_COMMANDS!=1 and mocks exec when enabled', async () => {
     // First, ensure commands are not executed when gate is off
     const touch = `node -e "require('fs').writeFileSync('cmd.txt','no')"`
     // import runOnce dynamically to avoid interfering with vi.mock later

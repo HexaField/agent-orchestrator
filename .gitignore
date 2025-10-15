@@ -1,7 +1,6 @@
 node_modules/
 dist/
-.tmp-patch-conflict/
-.tmp-patch-reject/
+.tmp-*/
 .e2e/
 .agent/
 .DS_Store
