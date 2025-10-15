@@ -1,123 +1,132 @@
-# Architecture & Operational Notes — Agent Orchestrator
+## Overview
 
-This document contains an in-depth description of the system architecture, adapters, artifact layout, marker/response semantics, environment flags, CI, testing, and operational guidance for running the orchestrator in production or development.
+This document is an architecture-level summary of the code in this repository (derived only from source files, not .md documents). The project is an "agent orchestrator" that coordinates an LLM, an agent adapter (which may be a CLI wrapper, HTTP agent, or test replay harness), and repository IO to implement spec-driven changes to a codebase.
 
-## Goals and overview
+High-level responsibilities:
 
-- Orchestrate small, repeatable agent-driven development iterations where an LLM or agent suggests code changes from a spec. Each run is recorded and verified by project tests before changes are accepted.
-- Keep a reproducible audit trail of all runs (`.agent/`), including artifacts, rejections, and human decisions.
-- Provide safe defaults (dry-run, mock hooks) to avoid accidental command execution in CI and dev environments.
+- CLI: user-facing commands (run, review, approve, commit, present, clarify, status, init, etc.)
+- Orchestrator (`src/core/orchestrator.ts`): the central flow for a single run; composes prompts, calls an LLM adapter, calls an agent adapter, records runs, verifies outcomes, and updates progress/state.
+- Generator client (`src/core/generatorClient.ts` and `src/core/templates.ts`): small helpers that call LLMs for context, clarifications, or structured change suggestions. Can fallback to deterministic generators.
+- LLM adapters (`src/adapters/llm/*`): provider-specific implementations (Ollama, OpenAI, VLLM, OpenAI-compatible, passthrough) exposing a uniform `generate()` API.
+- Agent adapters (`src/adapters/agent/*`): implementations that execute an agent given a prompt and working directory (codex-cli, copilot-cli, http, agent-replay, custom). They return stdout/stderr/exitCode structures.
+- IO helpers (`src/io/*`): filesystem, git helpers and command runner that provide safe atomic writes, git diffs, and controlled command execution.
+- Progress and review (`src/core/progress.ts`, `src/core/review.ts`): read/write human-oriented `progress.md` sections, compute heuristics for review and review with optional LLM assistance.
 
-## High-level architecture
+This architecture focuses on the orchestration of a single run and the supporting subsystems.
 
-- CLI (`src/cli`) — user-facing commands: `init`, `run`, `status`, `review`, `commit`, etc.
-- Orchestrator core (`src/core/orchestrator.ts`) — coordinates LLM generation, agent invocation, patch application, verification, and progress updates.
-- Adapters:
-  - LLM adapters (`src/adapters/llm/*`) — abstract LLM providers (vllm, openai-compatible, openai, passthrough).
-  - Agent adapters (`src/adapters/agent/*`) — external agent implementations (Copilot CLI, Codex CLI, HTTP agent, custom test adapter).
-- IO & shell (`src/io`) — centralized `runCommand` wrapper, safe defaults, env redaction.
-- Patch & apply (`src/core/patches.ts`) — robust application of patches with transactional git fallbacks, `.rej` detection, and artifact recording.
-- Progress (`src/core/progress.ts`) — atomic section writers for `progress.md`, next task acceptance criteria handling.
+## Component diagram
 
-## Adapters
+```mermaid
+graph LR
+  CLI[CLI]
+  subgraph Orchestrator
+    O[Orchestrator]
+    Templates[Templates / GeneratorClient]
+    Progress[Progress]
+    Review[Review]
+  end
+  subgraph Adapters
+    LLM[LLM Adapters]
+    Agent[Agent Adapters]
+  end
+  subgraph IO
+    FS["File System (.agent/*, progress.md, spec.md)"]
+    Git[Git]
+    Shell[Shell Runner]
+  end
 
-LLM adapters implement the `LLMAdapter` interface (see `src/types/adapters.ts`). They must provide a `generate` method that returns `{ text, raw }`.
+  CLI --> O
+  O --> Templates
+  O --> LLM
+  O --> Agent
+  Agent --> IO
+  LLM --> IO
+  O --> Progress
+  O --> Review
+  Review --> LLM
+  Progress --> FS
+  O --> FS
+  IO --> Git
+  IO --> Shell
 
-Agent adapters implement `AgentAdapter` and provide `run({ prompt, cwd, env, timeoutMs })` returning `{ stdout, stderr, exitCode }`.
+  classDef core fill:#f9f,stroke:#333,stroke-width:1px
+  class O core
+```
 
-Current adapters
+Notes:
 
-- `src/adapters/llm/openai.ts` — basic OpenAI Chat Completions wrapper using global `fetch`, supports `OPENAI_API_KEY` and `LLM_API_KEY`, with retries/backoff.
-- `src/adapters/llm/openai-compatible.ts` — compatible with OSS LLM endpoints that use the completions format.
-- `src/adapters/llm/vllm.ts` — (existing) adapter for local VLLM endpoints.
-- `src/adapters/llm/passthrough.ts` — test-only adapter.
+- The CLI is a thin command dispatcher (`src/cli/index.ts`) that invokes `orchestrator.runOnce` or other core commands.
+- The Orchestrator is the workflow engine: it builds prompts (via templates), may call an LLM to generate an initial agent prompt, invokes an Agent adapter with that prompt, captures outputs, writes run artifacts to `.agent/runs/<runId>/`, records git diffs, runs verification, produces progress patches, and updates `state.json`.
 
-- `src/adapters/llm/ollama.ts` — adapter for local Ollama HTTP endpoints. See details below.
+## Sequence: runOnce (simplified)
 
-- `src/adapters/agent/http.ts` — production-capable HTTP adapter: expects POST JSON `{ prompt }` and normalizes responses `{ stdout, stderr, exitCode }` (also accepts `text` as stdout). Configure endpoint via `AGENT_HTTP_ENDPOINT` in env or adapter `env`.
-- `src/adapters/agent/copilotCli.ts` — robust Copilot CLI wrapper; tries multiple invocation patterns and uses centralized `runCommand` for safety and testability.
-- `src/adapters/agent/custom.ts` — test adapter used by contract tests.
+```mermaid
+sequenceDiagram
+  participant User
+  participant CLI
+  participant Orchestrator
+  participant Templates
+  participant LLM
+  participant Agent
+  participant FS
+  participant Git
+  participant Review
 
-Adapter guidance
+  User->>CLI: run command
+  CLI->>Orchestrator: runOnce(opts)
+  Orchestrator->>FS: read spec.md
+  Orchestrator->>Templates: genChecklist, genContextAsync
+  Templates-->>Orchestrator: checklist, contextPrompt
+  Orchestrator->>LLM: generate(llmPrompt) [optional]
+  LLM-->>Orchestrator: text
+  Orchestrator->>Agent: run({ prompt })
+  Agent-->>Orchestrator: stdout/stderr
+  Orchestrator->>FS: write .agent/runs/<runId>/run.json, patches, artifacts
+  Orchestrator->>Git: gitDiffNameOnly, gitDiffFull
+  Orchestrator->>Review: reviewCodeAsync(diff)
+  Review-->>Orchestrator: review result
+  Orchestrator->>Templates: genUpdate -> progressPatch
+  Orchestrator->>FS: applyProgressPatch (progress.md)
+  Orchestrator->>FS: append audit.log
+  Orchestrator->>FS: write state.json
+  Orchestrator-->>CLI: runJson (result)
+  CLI-->>User: prints summary
+```
 
-- The HTTP agent should expose a small JSON API: POST / with { prompt }.
-- The response schema should include `stdout`, `stderr`, and `exitCode` or `text` (will be normalized to `stdout`).
-- Authentication: prefer Bearer tokens passed via `Authorization` header. The adapter accepts `AGENT_HTTP_ENDPOINT`—for more advanced setups, implement token rotation or per-run headers.
+Key points:
 
-Ollama adapter details
+- The LLM call is optional: the orchestrator can be driven by a provided prompt or generated one.
+- Agent adapters encapsulate different ways to run an agent; e.g., `agent-replay` is used by tests to simulate runs by copying fixture runs into `.agent/runs`.
+- Execution of shell commands by agents is gated by environment variables (`AO_ALLOW_COMMANDS`) and the `runCommand` helper implements dry-run/CI safeguards.
 
-- Purpose: support running a local Ollama HTTP model server as an LLM provider. The adapter is implemented in `src/adapters/llm/ollama.ts` and is selectable via `AO_LLM_PROVIDER=ollama` (or `--llm ollama`).
-- Defaults: endpoint `http://localhost:11434`, model `ollama:latest`.
-- Endpoint: the adapter POSTs JSON to `<endpoint>/api/generate` with a body `{ model, prompt, temperature, max_tokens, stop }`.
-- Response shapes supported: Ollama and OSS LLM servers vary; the adapter tries to extract text from common locations and returns `{ text, raw }`:
-  - `json.output[0].content` or `json.output[0].text` (common Ollama-like outputs)
-  - `json.choices[0].message.content` or `json.choices[0].text` (OpenAI-compatible responses)
-  - `json.result` or `json.output` as a top-level string
-- Usage: set `AO_LLM_PROVIDER=ollama` and `OLLAMA_SERVER_URL` (or `OLLAMA_API_BASE`) to point the Codex CLI (or other agents) to your Ollama server. The Codex CLI adapter will map `OLLAMA_*` env vars to `OPENAI_API_BASE` so existing OpenAI-compatible CLIs can target Ollama.
+## Data model and storage
 
-## Marker format and response types
+- State: `.agent/state.json` (version, currentRunId, status, lastOutcome, nextTask).
+- Run artifacts: `.agent/runs/<runId>/run.json` contains inputs, outputs, whatDone, verification, git diffs, and metadata. Optionally `.agent/runs/<runId>/patches.diff` and `applied.marker`.
+- Progress: `progress.md` is structured with `##` sections and may contain Checklist, Clarifications, Decisions, Next Task, and Status. `src/core/progress.ts` provides helpers to read and write sections and accept structured ProgressPatch objects.
 
-Agents that produce file output should use the marker format in stdout:
+## LLM adapter contract
 
-=== path/to/filename.ext === <file contents>
+- All adapters implement a `generate({ prompt, temperature?, maxTokens?, stop?, system? })` function that returns { text, raw }.
+- Adapters included: Ollama (HTTP to Ollama API), OpenAI (official API wrapper), OpenAI-compatible (generic completions endpoint), vLLM (local vLLM endpoint), Passthrough (returns prompt as text for deterministic tests).
 
-Each marker opens a new file. Only well-formed markers are applied. Response types are configured with `AO_RESPONSE_TYPE` (`patches|files|commands|mixed`).
+## Agent adapter contract
 
-## Patch apply & `.rej` preservation
+- Agents implement `run({ prompt, cwd, env?, timeoutMs? })` and return an object similar to { stdout, stderr, exitCode } (or more detailed). Adapters:
+  - Codex CLI: wraps `codex exec` and writes invocation debug to `.agent/codex-invocation.json`.
+  - Copilot CLI: tries known CLI invocations.
+  - HTTP agent: POSTs prompt to `AGENT_HTTP_ENDPOINT`.
+  - Agent-replay: test harness that selects fixture run data from `tests/e2e/fixtures/replay` and writes it into `.agent/runs/<runId>/run.json`.
 
-- Patches are applied using git when available. When `git apply --reject` produces `.rej` files, the orchestrator preserves those in the run artifacts:
-  - Non-git: copy `.rej` into `.agent/runs/<runId>/rejections/` and record in `applied.marker`.
-  - Git transactional failures: copy rejections to the OS temp runs dir for isolation and include relative paths in `applied.marker`.
+## Safety, verification and review
 
-This avoids leaving untracked `.rej` files in the working tree while preserving audit info.
+- Verification: `runVerification()` is called in orchestrator after agent output to determine lint/typecheck/test status. If verification fails (lint/typecheck/tests), the run may be marked as `failed` and progress updated accordingly.
+- Review heuristics: `reviewCode()` and `reviewCodeAsync()` inspect diffs for file counts, line adds/removals, test touches, and optionally use an LLM (controlled by `AO_USE_LLM_REVIEW`) to make a recommendation. The orchestrator uses this to decide whether human approval is required.
+- Applying patches: `src/core/patches.ts` implements robust `git apply` strategies including temp branch transactional application and preserving .rej files when rejects occur.
 
-## Progress.md and acceptance criteria
+## Operational notes and edge cases
 
-- `progress.md` is updated atomically by `src/core/progress.ts`. Sections include `Status`, `Clarifications`, `Decisions`, `Next Task`, and an inline checklist.
-- `Next Task` includes `Acceptance Criteria` which are parsed and validated by `readNextTaskAcceptanceCriteria` and `validateAcceptanceCriteria` (basic trimming/filtering applied). For production, extend validation to enforce structured criteria.
-
-## Locking & concurrency
-
-- `src/core/locks.ts` implements an atomic lock file approach using `fs.open(..., 'wx')` to avoid races and writes PID + timestamp into the lock.
-- Stale-lock detection: locks older than 5 minutes are considered stale and are recoverable (auto-unlinked). Make threshold configurable if needed.
-
-## CLI helpers and artifacts inspection
-
-- `show-run <runId>` — prints `.agent/runs/<runId>/run.json` for quick inspection.
-- `list-rejections <runId>` — lists preserved `.rej` files under the run artifact.
-
-## Environment flags and safe defaults
-
-- `AO_ALLOW_COMMANDS` — must be explicitly set to `1` to permit running commands. Default is off to avoid accidental command runs in CI.
-- `AO_DRY_RUN` — simulate command execution.
-- `MOCK_RUN_COMMAND` — test hook that returns a JSON string to simulate command outputs.
-- `AO_USE_LLM_GEN` — opt-in to LLM-based generation.
-- `AO_LLM_PROVIDER` — choose the LLM adapter name.
-
-## Tests & CI
-
-- Unit & contract tests live under `tests/` and are executed using Vitest (`npm test`).
-- CI workflow (`.github/workflows/ci.yml`) runs build, lint, typecheck, and tests on push/PR.
-
-## Operational notes
-
-- For production use, implement the following before trusting automation on main branches:
-  - Proper LLM provider integration with secure secrets and retries.
-  - Robust PR creation via Octokit (replace shell `curl` usage).
-  - Stronger locking or external coordination for multi-run setups.
-  - Retention policy for `.agent/runs` and `.rej` artifacts.
-
-## Where to look in code
-
-- CLI entry: `src/cli/index.ts`
-- Orchestrator: `src/core/orchestrator.ts`
-- Patch apply: `src/core/patches.ts`
-- Progress: `src/core/progress.ts`
-- Locks: `src/core/locks.ts`
-- LLM adapters: `src/adapters/llm/*`
-- Agent adapters: `src/adapters/agent/*`
-- Tests: `tests/`
-
-## Contact
-
-If you need more changes or specific integration examples (e.g., GitHub App with Octokit, Kubernetes-based agent endpoints, or Vault-backed secrets), I can add examples.
+- Concurrency control: `withLock(cwd, fn)` is used by orchestrator to prevent concurrent runs (locks.ts).
+- Human gating: if state is `awaiting_approval`, runs are blocked unless `--force` is passed.
+- Command execution safety: `runCommand` only executes real commands when AO_ALLOW_COMMANDS=1 and not running in CI; otherwise returns DRY-RUN outputs.
+- Robustness: many adapters and templates have fallbacks to deterministic behavior when environment or remote services are unavailable (e.g., passthrough LLM, generator fallbacks).
