@@ -8,12 +8,20 @@ export function createOllama(opts: { endpoint?: string; model?: string }): LLMAd
     name: 'ollama',
     async generate(input) {
       const url = `${endpoint.replace(/\/$/, '')}/api/generate`
+      // Increase max_tokens default to reduce silent truncation and request
+      // a larger context window via `options.num_ctx` (Ollama internal API).
+      // Note: persistent changes to context should be done via a Modelfile
+      // (PARAMETER num_ctx ...) and creating a model, but the internal
+      // `/api/generate` examples accept `options.num_ctx` at request time.
       const body = {
         model,
         prompt: input.prompt,
         temperature: input.temperature ?? 0,
-        max_tokens: input.maxTokens ?? 512,
-        stop: input.stop
+        // doubled default to reduce truncation
+        max_tokens: input.maxTokens ?? 8192,
+        stop: input.stop,
+        // request larger context window at runtime (doubled)
+        options: { num_ctx: 32768 }
       } as any
 
       const res = await fetch(url, {

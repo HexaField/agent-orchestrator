@@ -18,8 +18,7 @@ export const ConfigSchema = z.object({
   ALLOW_COMMANDS: z.boolean().optional(),
   USE_LLM_GEN: z.boolean().optional(),
   RESPONSE_TYPE: z.enum(['patches', 'files', 'commands', 'mixed']).optional(),
-  SKIP_VERIFY: z.boolean().optional(),
-  
+  SKIP_VERIFY: z.boolean().optional()
 })
 
 export type AppConfig = z.infer<typeof ConfigSchema>

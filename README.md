@@ -37,9 +37,7 @@ Prerequisites:
 
 Configuration
 
-Prefer per-project configuration stored in `.agent/config.json` which is seeded
-by `npx agent-orchestrator init --cwd .`. You can also set values via CLI flags
-(`--llm`, `--agent`, etc.) when invoking commands. Example project config keys:
+Prefer per-project configuration stored in `.agent/config.json` which is seeded by `npx agent-orchestrator init --cwd .`. You can also set values via CLI flags (`--llm`, `--agent`, etc.) when invoking commands. Example project config keys:
 
 - `LLM_PROVIDER` — one of `vllm`, `passthrough`, `ollama` (default: `ollama`)
 - `LLM_ENDPOINT` — optional HTTP base URL for local LLMs (e.g. `http://localhost:11434/v1`)

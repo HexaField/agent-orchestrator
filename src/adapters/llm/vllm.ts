@@ -7,10 +7,15 @@ export function createVllm(opts: { endpoint?: string; model?: string }): LLMAdap
     name: 'vllm',
     async generate(input) {
       const url = `${endpoint}/chat/completions`
+      // vLLM uses an OpenAI-compatible API server. The max context/window is
+      // configured server-side (model/server args). We increase max_tokens
+      // requested here to avoid short responses, but increasing the context
+      // length itself typically requires adjusting the vLLM server/model config.
       const body = {
         model,
         temperature: input.temperature ?? 0,
-        max_tokens: input.maxTokens ?? 512,
+        // doubled default to reduce truncation
+        max_tokens: input.maxTokens ?? 8192,
         stop: input.stop,
         messages: [
           ...(input.system ? [{ role: 'system', content: input.system }] : []),
