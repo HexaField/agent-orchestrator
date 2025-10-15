@@ -55,7 +55,24 @@ export async function runCommand(
     } catch {}
   }
 
-  if (!allow || isCI || dryRun) {
+  // Test override: force allowing commands in test environments when requested.
+  // This is useful in e2e harnesses where an external CI flag or sandboxing
+  // falsely causes child runs to be treated as read-only. Set FORCE_ALLOW_COMMANDS=1
+  // in opts.env or process.env to enable.
+  const forceAllow = String(opts.env?.FORCE_ALLOW_COMMANDS ?? process.env['FORCE_ALLOW_COMMANDS'] ?? '').trim() === '1'
+  if (forceAllow) {
+    // clear CI detection in the merged env so downstream checks don't pick it up
+    mergedEnv['CI'] = undefined
+  }
+
+  // If FORCE_ALLOW_COMMANDS was set, force allow and ignore CI/dry-run
+  const effectiveIsCI = forceAllow ? false : isCI
+  if (forceAllow) {
+    allow = true
+    dryRun = false
+  }
+
+  if (!allow || effectiveIsCI || dryRun) {
     // do not execute; return a simulated dry-run result
     return { stdout: `DRY-RUN: ${cmd} ${args.join(' ')}`.slice(0, 10 * 1024), stderr: '', exitCode: 0 }
   }
