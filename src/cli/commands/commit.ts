@@ -25,6 +25,7 @@ const commit = new Command('commit')
         const cfg = await getEffectiveConfig(cwd)
         dryRun = Boolean(cfg && (cfg as any).DRY_RUN)
       } catch {}
+      // allow tests to short-circuit by setting VITEST/VITEST_WORKER_ID in process.env
       if (!(process.env.VITEST || process.env.VITEST_WORKER_ID || dryRun)) {
         await execa('git', ['add', '-A'], { cwd })
         const branch = opts.branch ?? `agent/${Date.now()}`
@@ -68,7 +69,15 @@ const commit = new Command('commit')
         // fall through to API path
       }
 
-      const token = process.env.GITHUB_TOKEN
+      // Prefer project config token; fall back to process.env for tests/legacy
+      let token: string | undefined = undefined
+      try {
+        const { getEffectiveConfig } = await import('../../config')
+        const cfg = await getEffectiveConfig(process.cwd())
+        token = cfg.GITHUB_TOKEN || process.env.GITHUB_TOKEN
+      } catch {
+        token = process.env.GITHUB_TOKEN
+      }
       if (!token) {
         throw new Error('PR creation requested but neither `gh` CLI succeeded nor GITHUB_TOKEN provided')
       }

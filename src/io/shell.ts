@@ -22,13 +22,16 @@ export async function runCommand(
   args: string[],
   opts: { cwd: string; timeoutMs?: number; env?: Record<string, string> }
 ) {
-  const mergedEnv = Object.assign({}, process.env, opts.env || {}) as Record<string, string | undefined>
+  // Only honor explicit per-invocation env passed in opts.env. Tests may still
+  // set process.env to control behavior; we read test-only flags from both.
+  const mergedEnv = Object.assign({}, opts.env || {}) as Record<string, string | undefined>
 
-  // Safety: default to disallow running commands in CI unless explicitly enabled
+  // Safety: detect CI only from explicit invocation env or well-known test flags.
   const isCI = Boolean(mergedEnv['CI'] || mergedEnv['GITHUB_ACTIONS'] || mergedEnv['CI_SERVER'])
   // ALLOW_COMMANDS and DRY_RUN are project-level configuration. Prefer
   // values from .agent/config.json when present; fall back to opts.env only.
   // Start with explicit per-invocation env values when provided
+  // Defaults: prefer explicit per-invocation env; project config may override below
   let allow = String(opts.env?.ALLOW_COMMANDS ?? '').trim() === '1'
   let dryRun = String(opts.env?.DRY_RUN ?? '').trim() === '1'
   try {
@@ -43,7 +46,8 @@ export async function runCommand(
 
   // Test hook: if MOCK_RUN_COMMAND is present, return its JSON-parsed value (stringified)
   // Test hook: if MOCK_RUN_COMMAND is present in either merged env or opts.env, return its JSON-parsed value
-  const mockCmd = opts.env?.MOCK_RUN_COMMAND || mergedEnv['MOCK_RUN_COMMAND']
+  // Test hook: MOCK_RUN_COMMAND may be passed via opts.env; fall back to process.env
+  const mockCmd = opts.env?.MOCK_RUN_COMMAND || process.env['MOCK_RUN_COMMAND'] || mergedEnv['MOCK_RUN_COMMAND']
   if (mockCmd) {
     try {
       const js = JSON.parse(mockCmd)

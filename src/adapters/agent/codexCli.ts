@@ -103,8 +103,9 @@ export function createCodexCli(): AgentAdapter {
             LLM_ENDPOINT: env.LLM_ENDPOINT,
             DEBUG_CODEX: debugCodeX || undefined,
             ALLOW_COMMANDS: allowFlag || undefined,
-            PATH: env.PATH || process.env.PATH,
-            HOME: env.HOME || process.env.HOME,
+            // Do not leak host process.env PATH/HOME; tests should set these in input.env when needed
+            PATH: env.PATH || undefined,
+            HOME: env.HOME || undefined,
             model
           }
         }

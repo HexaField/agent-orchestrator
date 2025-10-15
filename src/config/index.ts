@@ -45,9 +45,9 @@ export async function writeProjectConfig(cfg: AppConfig, cwd: string = process.c
  */
 export async function getEffectiveConfig(
   cwd: string = process.cwd(),
-  env: Record<string, string | undefined> = process.env
+  env: Record<string, string | undefined> = {}
 ): Promise<AppConfig> {
-  // Load env-based config tolerant (non-strict)
+  // Load env-based config tolerant (non-strict) from provided env map
   const { loadConfig } = await import('./defaults')
   const envCfg = loadConfig(env)
 

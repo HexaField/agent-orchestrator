@@ -8,10 +8,7 @@ import { ConfigSchema, type AppConfig } from './schema'
  * to throw on parse errors (useful for tests or CI where silent fallbacks
  * are undesirable).
  */
-export function loadConfig(
-  env: Record<string, string | undefined> = process.env,
-  options?: { strict?: boolean }
-): AppConfig {
+export function loadConfig(env: Record<string, string | undefined> = {}, options?: { strict?: boolean }): AppConfig {
   const parsed = ConfigSchema.safeParse(env)
   if (!parsed.success) {
     if (options && options.strict) {

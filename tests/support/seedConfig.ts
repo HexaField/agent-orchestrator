@@ -16,6 +16,6 @@ export async function seedConfigFor(tmpDir: string, partial: Record<string, any>
   }
   const cfg = { ...base, ...partial }
   // allow tests to pass a stubUrl key as an alias for LLM_ENDPOINT
-  if (partial && (partial as any).stubUrl) cfg.LLM_ENDPOINT = (partial as any).stubUrl
+  if (partial && partial.stubUrl) cfg.LLM_ENDPOINT = partial.stubUrl
   await writeProjectConfig(cfg as any, tmpDir)
 }
