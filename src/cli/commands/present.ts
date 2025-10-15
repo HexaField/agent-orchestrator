@@ -1,7 +1,7 @@
 import { Command } from 'commander'
 import path from 'path'
 import { setState } from '../../core/orchestrator'
-import { readProgress, applyProgressPatch } from '../../core/progress'
+import { applyProgressPatch, readProgress } from '../../core/progress'
 import { genClarifyAsync } from '../../core/templates'
 
 const present = new Command('present')

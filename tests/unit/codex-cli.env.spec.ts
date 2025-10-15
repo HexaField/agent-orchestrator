@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { createCodexCli } from '../../src/adapters/agent/codexCli'
 import * as shell from '../../src/io/shell'
 

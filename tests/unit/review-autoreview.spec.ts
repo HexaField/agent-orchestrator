@@ -1,6 +1,6 @@
-import { describe, it, expect, vi } from 'vitest'
-import { reviewCode, reviewCodeAsync } from '../../src/core/review'
+import { describe, expect, it, vi } from 'vitest'
 import * as llmIndex from '../../src/adapters/llm/index'
+import { reviewCode, reviewCodeAsync } from '../../src/core/review'
 
 describe('automated review heuristics', () => {
   it('auto-approves small docs-only diffs', () => {
@@ -27,12 +27,15 @@ describe('automated review heuristics', () => {
   it('falls back to heuristic when LLM review is enabled but passthrough returns inconclusive text', async () => {
     process.env.AO_USE_LLM_REVIEW = '1'
     // monkey patch getLLMAdapter to return a neutral LLM that does not echo the prompt
-    vi.spyOn(llmIndex, 'getLLMAdapter').mockImplementation(() => ({
-      name: 'neutral',
-      async generate() {
-        return { text: 'I could not determine a definitive label.' }
-      }
-    } as any))
+    vi.spyOn(llmIndex, 'getLLMAdapter').mockImplementation(
+      () =>
+        ({
+          name: 'neutral',
+          async generate() {
+            return { text: 'I could not determine a definitive label.' }
+          }
+        }) as any
+    )
     const diff = `diff --git a/README.md b/README.md\n+++ b/README.md\n-Old\n+New\n`
     const res = await reviewCodeAsync(diff)
     expect(res.status).toBe('approved')

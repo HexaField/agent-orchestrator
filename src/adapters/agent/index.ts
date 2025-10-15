@@ -3,6 +3,7 @@ import { createCodexCli } from './codexCli'
 import { createCopilotCli } from './copilotCli'
 import { createCustom } from './custom'
 import { createHttpAgent } from './http'
+import { createReplayAgent } from './replay'
 
 export function getAgentAdapter(name: string): AgentAdapter {
   switch (name) {
@@ -14,6 +15,8 @@ export function getAgentAdapter(name: string): AgentAdapter {
       return createCustom()
     case 'http':
       return createHttpAgent()
+    case 'agent-replay':
+      return createReplayAgent()
     default:
       throw new Error(`Unknown agent adapter: ${name}`)
   }

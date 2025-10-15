@@ -1,6 +1,6 @@
 import { Command } from 'commander'
-import path from 'path'
 import fs from 'fs-extra'
+import path from 'path'
 
 const showRun = new Command('show-run')
   .description('Show .agent run metadata for a given run id')

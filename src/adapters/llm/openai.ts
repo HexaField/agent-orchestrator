@@ -49,7 +49,7 @@ export function createOpenAI(opts: { endpoint?: string; model?: string } = {}): 
       const body: any = {
         model,
         messages,
-        temperature: input.temperature ?? 0,
+        temperature: input.temperature ?? 0
       }
       if (input.maxTokens) body.max_tokens = input.maxTokens
 

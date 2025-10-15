@@ -1,0 +1,49 @@
+{
+  "runId": "run-2025-10-14T20-16-01.245Z",
+  "startedAt": "2025-10-14T20:16:01.246Z",
+  "agent": {
+    "name": "codex-cli",
+    "version": "0"
+  },
+  "llm": {
+    "provider": "openai-compatible",
+    "model": "gpt-oss:20b",
+    "params": {
+      "temperature": 0
+    }
+  },
+  "inputs": {
+    "initialAgentPrompt": "Implement the spec.",
+    "contextPrompts": [
+      "Context summary: # Simple Spec  Implement a hello world function and tests.\n\nUse the checklist and acceptance criteria to guide changes."
+    ],
+    "checklist": ["Simple Spec"],
+    "responseType": "mixed"
+  },
+  "outputs": {
+    "patches": [".agent/runs/run-2025-10-14T20-16-01.245Z/patches.diff"],
+    "stdout": "<stdout omitted>",
+    "stderr": "",
+    "artifacts": []
+  },
+  "whatDone": "awaiting_review",
+  "verification": {
+    "lint": "fail",
+    "typecheck": "pass",
+    "tests": {
+      "passed": 0,
+      "failed": 1
+    }
+  },
+  "git": {
+    "files": [],
+    "diff": ""
+  },
+  "review": {
+    "required": false,
+    "status": "pending",
+    "notes": ""
+  },
+  "endedAt": "2025-10-14T20:17:09.366Z",
+  "durationMs": 68120
+}

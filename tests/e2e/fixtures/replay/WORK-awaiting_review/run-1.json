@@ -1,0 +1,6 @@
+{
+  "runId": "run-2025-10-14T20-22-36.295Z",
+  "whatDone": "awaiting_review",
+  "outputs": { "stdout": "placeholder", "stderr": "" },
+  "verification": { "tests": { "passed": 0, "failed": 1 }, "lint": "fail" }
+}

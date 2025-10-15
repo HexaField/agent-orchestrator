@@ -1,0 +1,15 @@
+{
+  "runId": "run-2025-10-14T21-28-08.695Z",
+  "startedAt": "2025-10-14T21:28:08.695Z",
+  "agent": { "name": "codex-cli", "version": "0" },
+  "outputs": {
+    "patches": [],
+    "stdout": "{\"message\": \"Patch failed to apply: conflict\"}",
+    "stderr": "",
+    "artifacts": ["patches.diff"]
+  },
+  "whatDone": "merge_conflict",
+  "verification": { "tests": { "passed": 0, "failed": 0 }, "lint": "pass" },
+  "endedAt": "2025-10-14T21:28:09.000Z",
+  "durationMs": 305
+}

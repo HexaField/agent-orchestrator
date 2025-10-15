@@ -34,7 +34,7 @@ const run = new Command('run')
           const res = await applyPatchesFromRun(cwd, st.currentRunId)
           if (!res.applied) {
             // in non-test runs, warn the user
-            // eslint-disable-next-line no-console
+
             console.warn('Patches were not applied:', res.path)
           }
         }

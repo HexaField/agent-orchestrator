@@ -51,7 +51,12 @@ export async function getStatus(cwd: string): Promise<string> {
   const sections = splitSections(content)
   const s = sections.find((x) => x.heading.toLowerCase() === 'status')
   if (!s) return 'idle'
-  return s.body.split('\n').map((l) => l.trim()).find(Boolean) ?? 'idle'
+  return (
+    s.body
+      .split('\n')
+      .map((l) => l.trim())
+      .find(Boolean) ?? 'idle'
+  )
 }
 
 export type ProgressPatch = {

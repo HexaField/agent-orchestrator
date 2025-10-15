@@ -13,8 +13,12 @@ export function createHttpAgent(): AgentAdapter {
         body: JSON.stringify(body)
       })
       if (!res.ok) return { stdout: '', stderr: `agent http error: ${res.status}`, exitCode: 1 }
-  const json = (await res.json()) as any
-  return { stdout: String(json.stdout ?? json.text ?? ''), stderr: String(json.stderr ?? ''), exitCode: Number(json.exitCode ?? 0) }
+      const json = (await res.json()) as any
+      return {
+        stdout: String(json.stdout ?? json.text ?? ''),
+        stderr: String(json.stderr ?? ''),
+        exitCode: Number(json.exitCode ?? 0)
+      }
     }
   }
 }

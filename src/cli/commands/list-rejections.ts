@@ -1,6 +1,6 @@
 import { Command } from 'commander'
-import path from 'path'
 import fs from 'fs-extra'
+import path from 'path'
 
 const listRejections = new Command('list-rejections')
   .description('List preserved .rej (patch rejection) files for a given run')

@@ -26,6 +26,7 @@ LLM adapters implement the `LLMAdapter` interface (see `src/types/adapters.ts`).
 Agent adapters implement `AgentAdapter` and provide `run({ prompt, cwd, env, timeoutMs })` returning `{ stdout, stderr, exitCode }`.
 
 Current adapters
+
 - `src/adapters/llm/openai.ts` — basic OpenAI Chat Completions wrapper using global `fetch`, supports `OPENAI_API_KEY` and `LLM_API_KEY`, with retries/backoff.
 - `src/adapters/llm/openai-compatible.ts` — compatible with OSS LLM endpoints that use the completions format.
 - `src/adapters/llm/vllm.ts` — (existing) adapter for local VLLM endpoints.
@@ -38,6 +39,7 @@ Current adapters
 - `src/adapters/agent/custom.ts` — test adapter used by contract tests.
 
 Adapter guidance
+
 - The HTTP agent should expose a small JSON API: POST / with { prompt }.
 - The response schema should include `stdout`, `stderr`, and `exitCode` or `text` (will be normalized to `stdout`).
 - Authentication: prefer Bearer tokens passed via `Authorization` header. The adapter accepts `AGENT_HTTP_ENDPOINT`—for more advanced setups, implement token rotation or per-run headers.
@@ -53,13 +55,11 @@ Ollama adapter details
   - `json.result` or `json.output` as a top-level string
 - Usage: set `AO_LLM_PROVIDER=ollama` and `OLLAMA_SERVER_URL` (or `OLLAMA_API_BASE`) to point the Codex CLI (or other agents) to your Ollama server. The Codex CLI adapter will map `OLLAMA_*` env vars to `OPENAI_API_BASE` so existing OpenAI-compatible CLIs can target Ollama.
 
-
 ## Marker format and response types
 
 Agents that produce file output should use the marker format in stdout:
 
-=== path/to/filename.ext ===
-<file contents>
+=== path/to/filename.ext === <file contents>
 
 Each marker opens a new file. Only well-formed markers are applied. Response types are configured with `AO_RESPONSE_TYPE` (`patches|files|commands|mixed`).
 

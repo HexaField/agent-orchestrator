@@ -1,9 +1,9 @@
 import type { LLMAdapter } from '../../types/adapters'
-import { createOpenAICompatible } from './openai-compatible'
+import { createOllama } from './ollama'
 import { createOpenAI } from './openai'
+import { createOpenAICompatible } from './openai-compatible'
 import { createPassthrough } from './passthrough'
 import { createVllm } from './vllm'
-import { createOllama } from './ollama'
 
 export function getLLMAdapter(name: string, opts: { endpoint?: string; model?: string }): LLMAdapter {
   switch (name) {

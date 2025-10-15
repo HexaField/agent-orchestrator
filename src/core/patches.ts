@@ -49,7 +49,11 @@ async function copyRejFiles(rejFiles: string[], destDir: string, cwd: string): P
 async function runCmd(command: string, cwd: string): Promise<{ code: number | null; stdout: string; stderr: string }> {
   return new Promise((resolve) => {
     exec(command, { cwd, maxBuffer: 10 * 1024 * 1024 }, (err, stdout, stderr) => {
-      resolve({ code: err && typeof (err as any).code === 'number' ? (err as any).code : null, stdout: String(stdout || ''), stderr: String(stderr || '') })
+      resolve({
+        code: err && typeof (err as any).code === 'number' ? (err as any).code : null,
+        stdout: String(stdout || ''),
+        stderr: String(stderr || '')
+      })
     })
   })
 }
@@ -65,11 +69,7 @@ export async function applyPatchesFromRun(cwd: string, runId: string): Promise<{
   const isGit = await runCmd('git rev-parse --is-inside-work-tree', cwd)
   if (isGit.code !== 0 || String(isGit.stdout || isGit.stderr).trim() !== 'true') {
     // non-git fallback: try applying with multiple strategies and write marker inside repo
-    const cmds = [
-      `git apply --index "${p}"`,
-      `git apply --index --reject "${p}"`,
-      `git apply --index --3way "${p}"`
-    ]
+    const cmds = [`git apply --index "${p}"`, `git apply --index --reject "${p}"`, `git apply --index --3way "${p}"`]
     for (const cmd of cmds) {
       const res = await runCmd(cmd, cwd)
       attempts.push({ cmd, code: res.code, stdout: res.stdout, stderr: res.stderr })
@@ -86,7 +86,12 @@ export async function applyPatchesFromRun(cwd: string, runId: string): Promise<{
       const data: any = {
         applied: false,
         message: 'failed-to-apply',
-        attempts: attempts.map((a) => ({ cmd: a.cmd, code: a.code, stderr: a.stderr.slice(0, 10 * 1024), stdout: a.stdout.slice(0, 10 * 1024) })),
+        attempts: attempts.map((a) => ({
+          cmd: a.cmd,
+          code: a.code,
+          stderr: a.stderr.slice(0, 10 * 1024),
+          stdout: a.stdout.slice(0, 10 * 1024)
+        })),
         timestamp: new Date().toISOString()
       }
       if (rejRels.length > 0) data.rejections = rejRels
@@ -112,11 +117,7 @@ export async function applyPatchesFromRun(cwd: string, runId: string): Promise<{
     // create and switch to temp branch
     await runCmd(`git checkout -b "${tempBranch}"`, cwd)
 
-    const cmds = [
-      `git apply --index "${p}"`,
-      `git apply --index --reject "${p}"`,
-      `git apply --index --3way "${p}"`
-    ]
+    const cmds = [`git apply --index "${p}"`, `git apply --index --reject "${p}"`, `git apply --index --3way "${p}"`]
 
     for (const cmd of cmds) {
       const res = await runCmd(cmd, cwd)
@@ -155,7 +156,7 @@ export async function applyPatchesFromRun(cwd: string, runId: string): Promise<{
         const still = await fs.pathExists(runsDir)
         if (!still) break
         // small delay
-        // eslint-disable-next-line no-await-in-loop
+
         await new Promise((r) => setTimeout(r, 50))
       }
       // ensure removal via shell fallback
@@ -171,7 +172,12 @@ export async function applyPatchesFromRun(cwd: string, runId: string): Promise<{
     const data: any = {
       applied: false,
       message: 'failed-to-apply',
-      attempts: attempts.map((a) => ({ cmd: a.cmd, code: a.code, stderr: a.stderr.slice(0, 10 * 1024), stdout: a.stdout.slice(0, 10 * 1024) })),
+      attempts: attempts.map((a) => ({
+        cmd: a.cmd,
+        code: a.code,
+        stderr: a.stderr.slice(0, 10 * 1024),
+        stdout: a.stdout.slice(0, 10 * 1024)
+      })),
       timestamp: new Date().toISOString()
     }
     // include any preserved rejections from the outDir location
@@ -214,7 +220,7 @@ export async function applyPatchesFromRun(cwd: string, runId: string): Promise<{
           } catch {}
           const still = await fs.pathExists(runsDir)
           if (!still) break
-          // eslint-disable-next-line no-await-in-loop
+
           await new Promise((r) => setTimeout(r, 50))
         }
       } catch {}
@@ -233,7 +239,12 @@ export async function applyPatchesFromRun(cwd: string, runId: string): Promise<{
         applied: false,
         message: 'failed-to-apply',
         error: String(err),
-        attempts: attempts.map((a) => ({ cmd: a.cmd, code: a.code, stderr: a.stderr.slice(0, 10 * 1024), stdout: a.stdout.slice(0, 10 * 1024) })),
+        attempts: attempts.map((a) => ({
+          cmd: a.cmd,
+          code: a.code,
+          stderr: a.stderr.slice(0, 10 * 1024),
+          stdout: a.stdout.slice(0, 10 * 1024)
+        })),
         timestamp: new Date().toISOString()
       }
       await fs.writeJson(marker, data, { spaces: 2 })

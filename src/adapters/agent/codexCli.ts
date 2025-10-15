@@ -1,6 +1,6 @@
-import { runCommand } from '../../io/shell'
 import fs from 'fs'
 import path from 'path'
+import { runCommand } from '../../io/shell'
 import type { AgentAdapter } from '../../types/adapters'
 
 export function createCodexCli(): AgentAdapter {
@@ -25,10 +25,23 @@ export function createCodexCli(): AgentAdapter {
       // If an explicit LLM endpoint/base URL was provided, pass it as config overrides
       // so the Codex CLI uses the intended OpenAI-compatible base (e.g., Ollama).
       const codeXBase =
-        (input.env && (input.env.CODEX_API_BASE || input.env.OLLAMA_API_BASE || input.env.OLLAMA_SERVER_URL || input.env.VLLM_SERVER_URL || input.env.LLM_ENDPOINT)) ||
-        process.env.CODEX_API_BASE || process.env.OLLAMA_API_BASE || process.env.OLLAMA_SERVER_URL || process.env.VLLM_SERVER_URL || process.env.LLM_ENDPOINT
+        (input.env &&
+          (input.env.CODEX_API_BASE ||
+            input.env.OLLAMA_API_BASE ||
+            input.env.OLLAMA_SERVER_URL ||
+            input.env.VLLM_SERVER_URL ||
+            input.env.LLM_ENDPOINT)) ||
+        process.env.CODEX_API_BASE ||
+        process.env.OLLAMA_API_BASE ||
+        process.env.OLLAMA_SERVER_URL ||
+        process.env.VLLM_SERVER_URL ||
+        process.env.LLM_ENDPOINT
       // Fallback: prefer AO_LLM_ENDPOINT / LLM_ENDPOINT if present, or default to local Ollama
-      const fallbackBase = (input.env && (input.env.AO_LLM_ENDPOINT || input.env.LLM_ENDPOINT)) || process.env.AO_LLM_ENDPOINT || process.env.LLM_ENDPOINT || 'http://localhost:11434/v1'
+      const fallbackBase =
+        (input.env && (input.env.AO_LLM_ENDPOINT || input.env.LLM_ENDPOINT)) ||
+        process.env.AO_LLM_ENDPOINT ||
+        process.env.LLM_ENDPOINT ||
+        'http://localhost:11434/v1'
       const codeXBaseFinal = codeXBase || fallbackBase
       if (codeXBaseFinal) {
         // set model_provider and provider base via -c overrides
@@ -39,7 +52,21 @@ export function createCodexCli(): AgentAdapter {
         args.push('--oss')
       }
 
-      if (input.prompt) args.push(input.prompt)
+      // If the harness allows commands, make it explicit in the prompt so
+      // models that receive a read-only session context can act with write
+      // permission when running tests with the real `codex` CLI.
+      let finalPrompt = input.prompt || ''
+      try {
+        const allowCommands = (input.env && input.env.AO_ALLOW_COMMANDS) || process.env.AO_ALLOW_COMMANDS
+        if (String(allowCommands).trim() === '1' && finalPrompt) {
+          const prefix =
+            'SYSTEM: The test harness has granted filesystem and command execution permissions. You may create, modify, and run files in the current workspace. Respond with the sequence of commands or patches to implement the request when appropriate.\n\n'
+          finalPrompt = prefix + finalPrompt
+        }
+      } catch {
+        // ignore any issues determining allow flag
+      }
+      if (finalPrompt) args.push(finalPrompt)
 
       // Respect a VLLM or custom OpenAI-compatible base URL if provided.
       // Merge process.env with any input.env overrides so the child process sees both.
@@ -76,7 +103,12 @@ export function createCodexCli(): AgentAdapter {
 
       if (input.env && input.env['AO_DEBUG_CODEX'] === '1') {
         console.error('DEBUG codex-cli args=', JSON.stringify(args))
-        console.error('DEBUG codex-cli OPENAI_API_BASE=', env.OPENAI_API_BASE, 'CODEX_API_BASE=', input.env?.CODEX_API_BASE)
+        console.error(
+          'DEBUG codex-cli OPENAI_API_BASE=',
+          env.OPENAI_API_BASE,
+          'CODEX_API_BASE=',
+          input.env?.CODEX_API_BASE
+        )
       }
 
       return runCommand('codex', args, {

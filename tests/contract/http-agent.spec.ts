@@ -1,5 +1,5 @@
-import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import http from 'http'
+import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { createHttpAgent } from '../../src/adapters/agent/http'
 
 describe('HTTP agent adapter', () => {
@@ -15,10 +15,10 @@ describe('HTTP agent adapter', () => {
         res.end(JSON.stringify({ stdout: 'ok', stderr: '', exitCode: 0 }))
       })
     })
-  await new Promise((r) => server.listen(0, () => r(undefined)))
-  const addr: any = server.address()
-  const host = addr.address === '::' ? '127.0.0.1' : addr.address
-  url = `http://${host}:${addr.port}`
+    await new Promise((r) => server.listen(0, () => r(undefined)))
+    const addr: any = server.address()
+    const host = addr.address === '::' ? '127.0.0.1' : addr.address
+    url = `http://${host}:${addr.port}`
   })
 
   afterAll(async () => {

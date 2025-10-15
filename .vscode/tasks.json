@@ -1,0 +1,21 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "build:cli-and-run-e2e",
+      "type": "shell",
+      "group": "test",
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared",
+        "showReuseMessage": true,
+        "clear": false
+      },
+      "command": "npm run build --silent && npx vitest run tests/e2e/ollama-20b.spec.ts --run",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      }
+    }
+  ]
+}

@@ -1,0 +1,25 @@
+{
+  "args": [
+    "exec",
+    "--model",
+    "gpt-oss:20b",
+    "--json",
+    "-c",
+    "model_provider=ollama",
+    "-c",
+    "model_providers.ollama.name=Ollama",
+    "-c",
+    "model_providers.ollama.base_url=http://localhost:11434/v1",
+    "--oss",
+    "Implement the spec."
+  ],
+  "env": {
+    "OPENAI_API_BASE": "http://localhost:11434/v1",
+    "CODEX_API_BASE": "http://localhost:11434/v1",
+    "AO_DEBUG_CODEX": "1",
+    "AO_ALLOW_COMMANDS": "1",
+    "PATH": "",
+    "HOME": "",
+    "model": "gpt-oss:20b"
+  }
+}

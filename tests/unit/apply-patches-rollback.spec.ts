@@ -13,9 +13,9 @@ describe('apply patches rollback behavior', () => {
     await fs.ensureDir(tmp)
     // init a git repo
     await fs.writeFile(path.join(tmp, 'README.md'), 'initial', 'utf8')
-  await fs.mkdirp(path.join(tmp, '.agent', 'runs', 'run-test'))
-  // Git doesn't track empty directories; add a placeholder so .agent is part of the initial commit
-  await fs.writeFile(path.join(tmp, '.agent', '.keep'), '', 'utf8')
+    await fs.mkdirp(path.join(tmp, '.agent', 'runs', 'run-test'))
+    // Git doesn't track empty directories; add a placeholder so .agent is part of the initial commit
+    await fs.writeFile(path.join(tmp, '.agent', '.keep'), '', 'utf8')
     const run = (cmd: string) => require('child_process').execSync(cmd, { cwd: tmp })
     run('git init -b main')
     run('git add .')
@@ -28,11 +28,11 @@ describe('apply patches rollback behavior', () => {
 
   it('does not leave half-applied changes after failed apply', async () => {
     const p = path.join(tmp, '.agent', 'runs', 'run-test', 'patches.diff')
-  // create a malformed patch that will fail to apply
-  const badPatch = `diff --git a/NOFILE b/NOFILE
+    // create a malformed patch that will fail to apply
+    const badPatch = `diff --git a/NOFILE b/NOFILE
 +this will fail
 `
-  await fs.writeFile(p, badPatch, 'utf8')
+    await fs.writeFile(p, badPatch, 'utf8')
 
     const res = await applyPatchesFromRun(tmp, 'run-test')
     expect(res.applied).toBe(false)

@@ -12,7 +12,7 @@ const review = new Command('review')
     const cwd = path.resolve(process.cwd(), opts.cwd ?? '.')
     if (opts.approve) {
       await setState(cwd, { status: 'ready_to_commit' } as any)
-  } else if (opts.requestChanges || opts.requestChanges === true) {
+    } else if (opts.requestChanges || opts.requestChanges === true) {
       // synthesize recommended changes and write to progress.md and state
       try {
         let rec
@@ -24,9 +24,9 @@ const review = new Command('review')
           rec = genChange()
         }
         const body = `ID: ${rec.id}\nTitle: ${rec.title}\nSummary: ${rec.summary}\nAcceptance Criteria:\n${rec.acceptanceCriteria.map((c) => `- ${c}`).join('\n')}\nCreated: ${rec.createdAt}`
-  await applyProgressPatch(cwd, { decisions: undefined })
-  await applyProgressPatch(cwd, { nextTask: rec })
-  await writeSectionAtomic(cwd, 'Recommendations', body)
+        await applyProgressPatch(cwd, { decisions: undefined })
+        await applyProgressPatch(cwd, { nextTask: rec })
+        await writeSectionAtomic(cwd, 'Recommendations', body)
         await setState(cwd, { status: 'changes_requested', nextTask: rec } as any)
       } catch {
         // ignore write failures

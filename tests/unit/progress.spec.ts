@@ -1,7 +1,13 @@
 import fs from 'fs-extra'
 import path from 'path'
-import { beforeEach, afterEach, describe, it, expect } from 'vitest'
-import { readProgress, writeSectionAtomic, readNextTaskAcceptanceCriteria, getStatus, applyProgressPatch } from '../../src/core/progress'
+import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import {
+  applyProgressPatch,
+  getStatus,
+  readNextTaskAcceptanceCriteria,
+  readProgress,
+  writeSectionAtomic
+} from '../../src/core/progress'
 
 describe('progress API', () => {
   const tmp = path.join(__dirname, '.tmp-progress')
