@@ -1,4 +1,5 @@
-import { promises as fs } from 'fs'
+import * as fsSync from 'fs'
+import { promises as fsp } from 'fs'
 import path from 'path'
 
 export type TemplateParams = Record<string, string | number | boolean | undefined>
@@ -10,9 +11,14 @@ export function templatesDir(cwd = process.cwd()): string {
 export async function readTemplateFile(cwd: string, name: string): Promise<string | undefined> {
   const p = path.join(templatesDir(cwd), name)
   try {
-    const txt = await fs.readFile(p, 'utf8')
+    const txt = await fsp.readFile(p, 'utf8')
     return txt
   } catch {
+    // Diagnostic: log attempted path when missing (helpful in e2e debugging)
+    try {
+      // eslint-disable-next-line no-console
+      console.debug(`[templateLoader] readTemplateFile: missing ${p}; cwd=${cwd}; name=${name}`)
+    } catch {}
     // In test environment, fall back to built-in defaults to make tests stable
     if (process.env.VITEST === 'true' || process.env.NODE_ENV === 'test') {
       return DEFAULT_TEMPLATES[name]
@@ -22,11 +28,34 @@ export async function readTemplateFile(cwd: string, name: string): Promise<strin
 }
 
 export function readTemplateFileSync(cwd: string, name: string): string | undefined {
+  // Try the exact cwd first
   const p = path.join(templatesDir(cwd), name)
   try {
-    const txt = require('fs').readFileSync(p, 'utf8')
+    const txt = fsSync.readFileSync(p, 'utf8')
     return txt
   } catch {
+    // Diagnostic: report initial candidate
+    try {
+      // eslint-disable-next-line no-console
+      console.debug(`[templateLoader] readTemplateFileSync: missing ${p}; cwd=${cwd}; name=${name}`)
+    } catch {}
+    // If not found, walk up parent directories looking for a project `.agent/templates`
+    try {
+      let cur = path.resolve(cwd)
+      while (true) {
+        const candidate = path.join(cur, '.agent', 'templates', name)
+        try {
+          const txt2 = fsSync.readFileSync(candidate, 'utf8')
+          return txt2
+        } catch (e: any) {
+          // ignore read error for candidate
+        }
+        const parent = path.dirname(cur)
+        if (!parent || parent === cur) break
+        cur = parent
+      }
+    } catch {}
+
     if (process.env.VITEST === 'true' || process.env.NODE_ENV === 'test') {
       return DEFAULT_TEMPLATES[name]
     }
@@ -117,7 +146,7 @@ DEFAULT_TEMPLATES['reviewChanges.md'] = `Summary of changes.`
 export async function ensureTemplatesDir(cwd = process.cwd()): Promise<void> {
   const dir = templatesDir(cwd)
   try {
-    await fs.mkdir(dir, { recursive: true })
+    await fsp.mkdir(dir, { recursive: true })
   } catch {
     // ignore
   }
@@ -130,12 +159,12 @@ export async function seedTemplates(cwd = process.cwd()): Promise<void> {
   for (const [name, content] of Object.entries(DEFAULT_TEMPLATES)) {
     const p = path.join(dir, name)
     try {
-      await fs.access(p)
+      await fsp.access(p)
       // file exists — skip
       continue
     } catch {
       try {
-        await fs.writeFile(p, content, 'utf8')
+        await fsp.writeFile(p, content, 'utf8')
       } catch {
         // ignore write errors
       }

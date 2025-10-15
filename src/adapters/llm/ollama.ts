@@ -7,6 +7,7 @@ export function createOllama(opts: { endpoint?: string; model?: string }): LLMAd
   return {
     name: 'ollama',
     async generate(input) {
+      // start
       const url = `${endpoint.replace(/\/$/, '')}/api/generate`
       // Increase max_tokens default to reduce silent truncation and request
       // a larger context window via `options.num_ctx` (Ollama internal API).
@@ -30,8 +31,56 @@ export function createOllama(opts: { endpoint?: string; model?: string }): LLMAd
         body: JSON.stringify(body)
       })
       if (!res.ok) throw new Error(`LLM error ${res.status}`)
-      const json = (await res.json()) as any
 
+      // Ollama's internal `/api/generate` often streams NDJSON chunks.
+      // Attempt to parse streaming NDJSON and assemble the final text.
+      const contentType = res.headers.get('content-type') || ''
+
+      if (
+        contentType.includes('application/x-ndjson') ||
+        contentType.includes('application/ndjson') ||
+        res.headers.get('transfer-encoding') === 'chunked'
+      ) {
+        const reader = (res.body as any).getReader()
+        const decoder = new TextDecoder('utf-8')
+        let done = false
+        let buffer = ''
+        const chunks: any[] = []
+        let assembled = ''
+
+        while (!done) {
+          const { value, done: streamDone } = await reader.read()
+          if (value) buffer += decoder.decode(value, { stream: true })
+          // split full lines
+          const parts = buffer.split(/\r?\n/)
+          // keep the last partial line in buffer
+          buffer = parts.pop() || ''
+          for (const part of parts) {
+            const line = part.trim()
+            if (!line) continue
+            try {
+              const obj = JSON.parse(line)
+              chunks.push(obj)
+              if (typeof obj.response === 'string') assembled = obj.response
+              if (typeof obj.thinking === 'string') {
+                // some versions use 'thinking' partial text; append if response empty
+                if (!assembled) assembled += obj.thinking
+              }
+              if (obj.done) {
+                done = true
+              }
+            } catch {
+              // ignore parse errors for partial lines
+            }
+          }
+          if (streamDone) break
+        }
+
+        return { text: assembled ?? '', raw: chunks }
+      }
+
+      // fallback: non-streaming response
+      const json = (await res.json()) as any
       let text = ''
       if (Array.isArray(json.output) && json.output[0]) {
         text = json.output[0].content ?? json.output[0].text ?? ''

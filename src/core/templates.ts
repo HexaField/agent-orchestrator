@@ -20,11 +20,13 @@ export function genChecklist(spec: string): string[] {
   return Array.from(items)
 }
 
-export function genContext(spec?: string): string {
+export function genContext(spec?: string, cwd: string = process.cwd()): string {
   const summary = spec ? spec.split('\n').slice(0, 4).join(' ').trim() : ''
   const ctx = summary || 'No specification summary available.'
-  const rendered = renderTemplateSync(process.cwd(), 'context.md', { summary: ctx })
-  if (typeof rendered !== 'string') throw new Error('Missing required template: .agent/templates/context.md')
+  const rendered = renderTemplateSync(cwd, 'context.md', { summary: ctx })
+  if (typeof rendered !== 'string') {
+    throw new Error('Missing required template: .agent/templates/context.md')
+  }
   return rendered
 }
 
@@ -44,17 +46,21 @@ export function genReviewChanges(): string {
   return rendered
 }
 
-export function genClarify(spec?: string): string {
-  const rendered = renderTemplateSync(process.cwd(), 'clarify.md', { spec: spec || '' })
+export function genClarify(spec?: string, cwd: string = process.cwd()): string {
+  const rendered = renderTemplateSync(cwd, 'clarify.md', { spec: spec || '' })
   if (typeof rendered !== 'string') throw new Error('Missing required template: .agent/templates/clarify.md')
   return rendered
 }
 
-export function genChange(spec?: string, reason?: string): import('../types/models').NextTask {
+export function genChange(
+  spec?: string,
+  reason?: string,
+  cwd: string = process.cwd()
+): import('../types/models').NextTask {
   // Read the raw template so we can safely JSON-escape inserted values when the
   // template contains an embedded JSON block. This prevents invalid JSON when
   // %spec% contains newlines or quotes.
-  const raw = readTemplateFileSync(process.cwd(), 'change.md')
+  const raw = readTemplateFileSync(cwd, 'change.md')
   if (typeof raw !== 'string') throw new Error('Missing required template: .agent/templates/change.md')
 
   // Prepare escaped replacements for JSON contexts
@@ -131,35 +137,35 @@ export function genNext(): NextTask {
 }
 
 // Async LLM-backed wrappers (used when USE_LLM_GEN=1)
-export async function genContextAsync(spec?: string): Promise<string> {
+export async function genContextAsync(spec?: string, cwd: string = process.cwd()): Promise<string> {
   try {
     const { getEffectiveConfig } = await import('../config')
-    const cfg = await getEffectiveConfig(process.cwd())
-    if (!cfg || !cfg.USE_LLM_GEN) return genContext(spec)
+    const cfg = await getEffectiveConfig(cwd)
+    if (!cfg || !cfg.USE_LLM_GEN) return genContext(spec, cwd)
     const provider = cfg.LLM_PROVIDER || 'ollama'
     return genContextLLM(provider, spec)
   } catch {
-    return genContext(spec)
+    return genContext(spec, cwd)
   }
 }
 
-export async function genClarifyAsync(spec?: string): Promise<string> {
+export async function genClarifyAsync(spec?: string, cwd: string = process.cwd()): Promise<string> {
   try {
     const { getEffectiveConfig } = await import('../config')
-    const cfg = await getEffectiveConfig(process.cwd())
-    if (!cfg || !cfg.USE_LLM_GEN) return genClarify(spec)
+    const cfg = await getEffectiveConfig(cwd)
+    if (!cfg || !cfg.USE_LLM_GEN) return genClarify(spec, cwd)
     const provider = cfg.LLM_PROVIDER || 'ollama'
     return genClarifyLLM(provider, spec)
   } catch {
-    return genClarify(spec)
+    return genClarify(spec, cwd)
   }
 }
 
-export async function genChangeAsync(spec?: string, reason?: string): Promise<NextTask> {
+export async function genChangeAsync(spec?: string, reason?: string, cwd: string = process.cwd()): Promise<NextTask> {
   try {
     const { getEffectiveConfig } = await import('../config')
-    const cfg = await getEffectiveConfig(process.cwd())
-    if (!cfg || !cfg.USE_LLM_GEN) return genChange(spec, reason)
+    const cfg = await getEffectiveConfig(cwd)
+    if (!cfg || !cfg.USE_LLM_GEN) return genChange(spec, reason, cwd)
     const provider = cfg.LLM_PROVIDER || 'ollama'
     try {
       const text = await genChangeLLM(provider, spec, reason)
@@ -184,7 +190,7 @@ export async function genChangeAsync(spec?: string, reason?: string): Promise<Ne
     } catch {}
   } catch {}
 
-  const fallback = genChange(spec, reason)
+  const fallback = genChange(spec, reason, cwd)
   fallback.summary = `LLM output could not be parsed as JSON. Fallback: ${fallback.summary}`
   return fallback
 }

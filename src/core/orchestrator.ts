@@ -98,7 +98,7 @@ export async function runOnce(
 
     const checklist = genChecklist(specText)
     const { genContextAsync } = await import('./templates')
-    const contextPrompt = await genContextAsync(specText)
+    const contextPrompt = await genContextAsync(specText, cwd)
     const responseType = await genResponseType()
 
     // if a reviewer previously requested changes, include the Recommendations
@@ -306,7 +306,7 @@ export async function runOnce(
     if (finalWhat === 'needs_clarification') {
       try {
         const { genClarifyAsync } = await import('./templates')
-        const clar = await genClarifyAsync(specText)
+        const clar = await genClarifyAsync(specText, cwd)
         await applyProgressPatch(cwd, { clarifications: clar })
       } catch {
         // ignore failures writing clarifications
