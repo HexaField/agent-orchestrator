@@ -97,7 +97,7 @@ Key points:
 
 - The LLM call is optional: the orchestrator can be driven by a provided prompt or generated one.
 - Agent adapters encapsulate different ways to run an agent; e.g., `agent-replay` is used by tests to simulate runs by copying fixture runs into `.agent/runs`.
-- Execution of shell commands by agents is gated by environment variables (`AO_ALLOW_COMMANDS`) and the `runCommand` helper implements dry-run/CI safeguards.
+- Execution of shell commands by agents is gated by configuration (`ALLOW_COMMANDS`) and the `runCommand` helper implements dry-run/CI safeguards.
 
 ## Data model and storage
 
@@ -121,12 +121,12 @@ Key points:
 ## Safety, verification and review
 
 - Verification: `runVerification()` is called in orchestrator after agent output to determine lint/typecheck/test status. If verification fails (lint/typecheck/tests), the run may be marked as `failed` and progress updated accordingly.
-- Review heuristics: `reviewCode()` and `reviewCodeAsync()` inspect diffs for file counts, line adds/removals, test touches, and optionally use an LLM (controlled by `AO_USE_LLM_REVIEW`) to make a recommendation. The orchestrator uses this to decide whether human approval is required.
+- Review heuristics: `reviewCode()` and `reviewCodeAsync()` inspect diffs for file counts, line adds/removals, test touches, and optionally use an LLM (controlled by `USE_LLM_REVIEW`) to make a recommendation. The orchestrator uses this to decide whether human approval is required.
 - Applying patches: `src/core/patches.ts` implements robust `git apply` strategies including temp branch transactional application and preserving .rej files when rejects occur.
 
 ## Operational notes and edge cases
 
 - Concurrency control: `withLock(cwd, fn)` is used by orchestrator to prevent concurrent runs (locks.ts).
 - Human gating: if state is `awaiting_approval`, runs are blocked unless `--force` is passed.
-- Command execution safety: `runCommand` only executes real commands when AO_ALLOW_COMMANDS=1 and not running in CI; otherwise returns DRY-RUN outputs.
+- Command execution safety: `runCommand` only executes real commands when `ALLOW_COMMANDS=1` and not running in CI; otherwise returns DRY-RUN outputs.
 - Robustness: many adapters and templates have fallbacks to deterministic behavior when environment or remote services are unavailable (e.g., passthrough LLM, generator fallbacks).
