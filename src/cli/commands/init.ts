@@ -3,6 +3,7 @@ import { promises as fs } from 'fs'
 import path from 'path'
 import { ensureProjectConfig } from '../../config'
 import { setState } from '../../core/orchestrator'
+import { seedTemplates } from '../../core/templateLoader'
 import { genChecklist } from '../../core/templates'
 import { ensureDir } from '../../io/fs'
 
@@ -45,6 +46,13 @@ const init = new Command('init')
 
     // audit log file
     await fs.appendFile(path.join(agentDir, 'audit.log'), '', 'utf8')
+
+    // Seed default templates into .agent/templates (will not overwrite existing files)
+    try {
+      await seedTemplates(cwd)
+    } catch {
+      // ignore template seed failures
+    }
   })
 
 export default init

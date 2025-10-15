@@ -43,10 +43,12 @@ describe('templates', () => {
     const spec = '# Title\n\n## Feature A\n\nDo something\n\n## Feature B\n\nDo another thing'
     const ctx = genContext(spec)
     expect(ctx).toContain('Context summary:')
-    const clar = (genClarify as any)(spec)
-    expect(clar).toContain("What are the acceptance criteria for 'Feature A'?")
-    const change = (genChange as any)(spec, 'tests failed')
-    expect(change.summary).toContain('Please update the following')
+    const clar = genClarify(spec)
+    // templates are required now; default clarify template includes a prompt and the spec
+    expect(clar).toContain('Please clarify the overall acceptance criteria for this spec:')
+    expect(clar).toContain('# Title')
+    const change = genChange(spec, 'tests failed')
+    expect(change.summary).toContain('Please update')
     expect(change.title).toContain('Changes requested')
   })
 })

@@ -74,7 +74,7 @@ export function createCodexCli(): AgentAdapter {
       // Use only explicit input.env entries for the child process env so tests
       // don't accidentally pick up the surrounding process environment.
       const env = Object.assign({}, input.env || {})
-  // Ensure any provider base is set only when an explicit LLM endpoint was provided
+      // Ensure any provider base is set only when an explicit LLM endpoint was provided
       if (codeXBaseFinal) {
         // Set only the canonical endpoint in the child process env.
         env.LLM_ENDPOINT = env.LLM_ENDPOINT || codeXBaseFinal

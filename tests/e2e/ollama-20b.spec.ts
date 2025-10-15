@@ -54,7 +54,7 @@ function buildEnv(extra: Record<string, string> = {}) {
     // Default to the replay agent for fast deterministic E2E runs. Tests can
     // override by seeding REPLAY_FIXTURE or AGENT via seedConfigFor.
     AGENT: extra?.AGENT || 'agent-replay',
-  // Legacy provider-specific env vars removed; use LLM_ENDPOINT only.
+    // Legacy provider-specific env vars removed; use LLM_ENDPOINT only.
     // ensure quick timeouts for tests
     LLM_TIMEOUT_MS: '60000',
     ...extra
@@ -164,7 +164,7 @@ describe('E2E Ollama gpt-oss:20b (ollama) suite', () => {
       return
     } catch {
       // if we can't start a stub, fall back to checking for a local Ollama
-  const ok = await isPortOpen(LLM_HOST, LLM_PORT, 1000)
+      const ok = await isPortOpen(LLM_HOST, LLM_PORT, 1000)
       if (!ok) skippable = true
     }
   })
@@ -210,11 +210,11 @@ describe('E2E Ollama gpt-oss:20b (ollama) suite', () => {
 
       // seed project config so runtime reads .agent/config.json instead of env fallbacks
       const stub: any = (global as any).__E2E_STUB
-          const stubUrl = stub ? stub.url : LLM_ENDPOINT
+      const stubUrl = stub ? stub.url : LLM_ENDPOINT
       await seedConfigFor(tmp, {
         LLM_PROVIDER: 'ollama',
         LLM_MODEL: 'gpt-oss:20b',
-            LLM_ENDPOINT: stubUrl,
+        LLM_ENDPOINT: stubUrl,
         AGENT: 'agent-replay'
       })
 
@@ -333,7 +333,7 @@ describe('E2E Ollama gpt-oss:20b (ollama) suite', () => {
       await execa('git', ['init'], { cwd: tmp })
       await seedConfigFor(tmp, {
         LLM_PROVIDER: 'ollama',
-  LLM_ENDPOINT: LLM_ENDPOINT,
+        LLM_ENDPOINT: LLM_ENDPOINT,
         AGENT: 'agent-replay'
       })
       await execa('node', [cli, 'init', '--cwd', tmp], { env: prepareExecEnv(tmp) })
@@ -396,7 +396,7 @@ describe('E2E Ollama gpt-oss:20b (ollama) suite', () => {
       await execa('git', ['init'], { cwd: tmp })
       await seedConfigFor(tmp, {
         LLM_PROVIDER: 'ollama',
-  LLM_ENDPOINT: LLM_ENDPOINT,
+        LLM_ENDPOINT: LLM_ENDPOINT,
         AGENT: 'agent-replay'
       })
       await execa('node', [cli, 'init', '--cwd', tmp], { env: prepareExecEnv(tmp) })
@@ -474,7 +474,7 @@ describe('E2E Ollama gpt-oss:20b (ollama) suite', () => {
       await execa('git', ['init'], { cwd: tmp })
       await seedConfigFor(tmp, {
         LLM_PROVIDER: 'ollama',
-  LLM_ENDPOINT: LLM_ENDPOINT,
+        LLM_ENDPOINT: LLM_ENDPOINT,
         AGENT: 'agent-replay'
       })
       await execa('node', [cli, 'init', '--cwd', tmp], { env: prepareExecEnv(tmp) })

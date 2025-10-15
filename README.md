@@ -28,29 +28,25 @@ Quickstart (Codex agent + local vllm example)
 npx agent-orchestrator init --cwd .
 ```
 
-2. Configure the Codex-based agent (OpenAI Codex CLI) and a local `vllm` or `ollama` LLM provider
+2. Configure the Codex-based agent (Codex CLI) and a local `vllm` or `ollama` LLM provider
 
 Prerequisites:
 
 - Install and configure a local `vllm` server or adapter according to the `vllm` adapter docs.
-- Ensure you have OpenAI credentials that allow access to Codex (if using remote Codex) or the `codex-cli` adapter configured to target your Codex-compatible service.
+- If using the `codex-cli` adapter that proxies to a Codex-compatible service, configure its endpoint appropriately. This project no longer relies on cloud OpenAI APIs and only supports local LLM providers.
 
 Example environment variables (local vllm or Ollama + Codex CLI):
 
 ```bash
-# If using the local vllm adapter the CLI expects LLM_PROVIDER=vllm and
-# VLLM_SERVER_URL to point at your local vllm endpoint (example: http://localhost:8080)
+# Default: Ollama
+# By default the project will use `ollama` as the LLM provider. To explicitly
+# use vLLM set `LLM_PROVIDER=vllm` and point `LLM_ENDPOINT` at your local
+# vLLM or Ollama HTTP endpoint (example: http://localhost:11434/v1)
 export LLM_PROVIDER="vllm"
-export VLLM_SERVER_URL="http://localhost:8080"
+export LLM_ENDPOINT="http://localhost:11434/v1"
 
-# If using Ollama locally set LLM_PROVIDER=ollama and point OLLAMA_SERVER_URL
-# (or OLLAMA_API_BASE) at your Ollama HTTP endpoint (example: http://localhost:11434)
-export LLM_PROVIDER="ollama"
-export OLLAMA_SERVER_URL="http://localhost:11434"
-
-# For the Codex agent (codex-cli adapter) configure the OpenAI API key or
-# other Codex-compatible credentials used by the adapter
-export OPENAI_API_KEY="sk_..."
+# For the Codex agent (codex-cli adapter) configure any credentials or base URL
+# required by the Codex-compatible service you point it at (if applicable).
 ```
 
 3. Run the orchestrator (preview or execute)
@@ -83,7 +79,13 @@ Commands
 - `review` — record review actions (`--approve` / `--request-changes`)
 - `commit` — create a changelog, commit, and optionally open a PR (requires credentials)
 
-Adapters and configuration -- LLM adapters: `vllm`, `openai-compatible`, `openai`, `passthrough`, `ollama`
+Templates
+
+- Core prompt templates live in the repository under `.agent/templates/` and are editable by the user.
+- Templates support simple `%var%` interpolation (for example `%spec%` and `%reason%`).
+- Running `npx agent-orchestrator init --cwd .` will seed the `.agent/templates/` folder with default templates; editing those files customizes the agent prompts.
+
+Adapters and configuration -- LLM adapters: `vllm`, `passthrough`, `ollama`
 
 - Agent adapters: `http`, `copilot-cli`, `codex-cli`, `custom`
 

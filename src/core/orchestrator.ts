@@ -78,7 +78,7 @@ export async function runOnce(
     // the project config if missing via the underlying helper.
     const cfg = await getEffectiveConfig(cwd)
 
-  const llmName = opts.llm || cfg.LLM_PROVIDER || 'ollama'
+    const llmName = opts.llm || cfg.LLM_PROVIDER || 'ollama'
     const model = opts.model || cfg.LLM_MODEL
     const endpoint = opts.endpoint || cfg.LLM_ENDPOINT
 

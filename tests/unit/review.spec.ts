@@ -24,7 +24,7 @@ describe('review command', () => {
     const st = await getState(tmp)
     expect(st.status).toBe('changes_requested')
     expect(st.nextTask).toBeTruthy()
-    expect(st.nextTask?.title).toContain('Recommended')
+    expect(st.nextTask?.title).toContain('Changes requested')
   })
 
   it('uses LLM-backed genChange when USE_LLM_GEN=1', async () => {

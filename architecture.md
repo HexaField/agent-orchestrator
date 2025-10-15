@@ -7,7 +7,7 @@ High-level responsibilities:
 - CLI: user-facing commands (run, review, approve, commit, present, clarify, status, init, etc.)
 - Orchestrator (`src/core/orchestrator.ts`): the central flow for a single run; composes prompts, calls an LLM adapter, calls an agent adapter, records runs, verifies outcomes, and updates progress/state.
 - Generator client (`src/core/generatorClient.ts` and `src/core/templates.ts`): small helpers that call LLMs for context, clarifications, or structured change suggestions. Can fallback to deterministic generators.
-- LLM adapters (`src/adapters/llm/*`): provider-specific implementations (Ollama, OpenAI, VLLM, OpenAI-compatible, passthrough) exposing a uniform `generate()` API.
+- LLM adapters (`src/adapters/llm/*`): provider-specific implementations (Ollama, vLLM, passthrough) exposing a uniform `generate()` API.
 - Agent adapters (`src/adapters/agent/*`): implementations that execute an agent given a prompt and working directory (codex-cli, copilot-cli, http, agent-replay, custom). They return stdout/stderr/exitCode structures.
 - IO helpers (`src/io/*`): filesystem, git helpers and command runner that provide safe atomic writes, git diffs, and controlled command execution.
 - Progress and review (`src/core/progress.ts`, `src/core/review.ts`): read/write human-oriented `progress.md` sections, compute heuristics for review and review with optional LLM assistance.
@@ -108,7 +108,7 @@ Key points:
 ## LLM adapter contract
 
 - All adapters implement a `generate({ prompt, temperature?, maxTokens?, stop?, system? })` function that returns { text, raw }.
-- Adapters included: Ollama (HTTP to Ollama API), OpenAI (official API wrapper), OpenAI-compatible (generic completions endpoint), vLLM (local vLLM endpoint), Passthrough (returns prompt as text for deterministic tests).
+- Adapters included: Ollama (HTTP to Ollama API), vLLM (local vLLM endpoint), Passthrough (returns prompt as text for deterministic tests).
 
 ## Agent adapter contract
 
