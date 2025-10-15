@@ -76,6 +76,7 @@ export async function runOnce(
 
     // Load per-project config (seeding .agent/config.json if missing)
     const projectCfg = await ensureProjectConfig(cwd)
+    // (no-op) projectCfg is used below; avoid noisy debug prints in normal runs
 
     const llmName = opts.llm || projectCfg.LLM_PROVIDER || 'passthrough'
     const model = opts.model || projectCfg.LLM_MODEL
@@ -198,9 +199,33 @@ export async function runOnce(
     }
 
     const what = whatDoneFromText(agentRes.stdout + '\n' + agentRes.stderr)
-    // Run verification, which itself will inspect the project config and
-    // honor SKIP_VERIFY when present.
-    const verification = await runVerification(cwd)
+    // Run verification. Prefer the already-loaded projectCfg to decide
+    // whether verification should be skipped (avoids any timing/visibility
+    // issues reading the config again inside runVerification).
+    let verification: any
+    try {
+      if (projectCfg && (projectCfg as any).SKIP_VERIFY) {
+        verification = {
+          skipped: true,
+          reason: 'SKIP_VERIFY=true in project config',
+          lint: 'pass',
+          typecheck: 'pass',
+          tests: { passed: 0, failed: 0 }
+        }
+      } else if (process.env.SKIP_VERIFY === 'true' || process.env.SKIP_VERIFY === '1') {
+        verification = {
+          skipped: true,
+          reason: 'SKIP_VERIFY=true in environment',
+          lint: 'pass',
+          typecheck: 'pass',
+          tests: { passed: 0, failed: 0 }
+        }
+      } else {
+        verification = await runVerification(cwd)
+      }
+    } catch {
+      verification = await runVerification(cwd)
+    }
 
     const endedAt = new Date().toISOString()
     // capture git diffs (name-only and truncated full diff)

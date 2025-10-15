@@ -23,7 +23,7 @@ const commit = new Command('commit')
       try {
         const { readProjectConfig } = await import('../../config')
         const cfg = await readProjectConfig(cwd)
-        dryRun = Boolean(cfg && (cfg as any).AO_DRY_RUN)
+        dryRun = Boolean(cfg && (cfg as any).DRY_RUN)
       } catch {}
       if (!(process.env.VITEST || process.env.VITEST_WORKER_ID || dryRun)) {
         await execa('git', ['add', '-A'], { cwd })
@@ -50,7 +50,7 @@ const commit = new Command('commit')
           try {
             const { readProjectConfig } = await import('../../config')
             const cfg = await readProjectConfig(process.cwd())
-            return Boolean(cfg && (cfg as any).AO_DRY_RUN)
+            return Boolean(cfg && (cfg as any).DRY_RUN)
           } catch {
             return false
           }
