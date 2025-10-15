@@ -21,7 +21,7 @@ describe('templates', () => {
     expect(Array.isArray(n.acceptanceCriteria)).toBe(true)
   })
 
-  it('genResponseType respects AO_RESPONSE_TYPE in project config', async () => {
+  it('genResponseType respects RESPONSE_TYPE in project config', async () => {
     const tmp = path.join(__dirname, '.tmp-templates')
     await fs.remove(tmp)
     await fs.ensureDir(tmp)

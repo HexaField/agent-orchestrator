@@ -104,12 +104,12 @@ function ruleBasedWhatDone(text: string): WhatDone {
 
 /**
  * Optionally use an LLM to classify the agent output. Controlled via
- * AO_USE_LLM_EVAL=1. The LLM adapter should return a short label (one of
+ * USE_LLM_EVAL=1. The LLM adapter should return a short label (one of
  * spec_implemented, completed_task, needs_clarification, failed) or a
  * short explanation. We tolerate free-form outputs by mapping known words.
  */
 export async function whatDoneFromTextAsync(text: string): Promise<WhatDone> {
-  // prefer project config flag; do not use AO_* environment fallback
+  // prefer project config flag; do not use env fallbacks
   let useLLM = false
   try {
     const cfg = await readProjectConfig(process.cwd())
@@ -150,7 +150,7 @@ export async function whatDoneFromTextAsync(text: string): Promise<WhatDone> {
 }
 
 // Backwards compatible synchronous function that uses async evaluator if
-// AO_USE_LLM_EVAL is not enabled.
+// USE_LLM_EVAL is not enabled.
 export function whatDoneFromText(text: string): WhatDone {
   // Synchronous wrapper: always use rule-based for sync path
   return ruleBasedWhatDone(text)

@@ -6,7 +6,7 @@ export function createReplayAgent(): AgentAdapter {
   return {
     name: 'agent-replay',
     async run(input) {
-      // Allow tests to select which fixture via AO_REPLAY_FIXTURE env or default to the bundled one
+      // Allow tests to select which fixture via REPLAY_FIXTURE env or default to the bundled one
       // Prefer explicit input.env override, otherwise read the project config fixture
       // prefer explicit per-invocation env override (REPLAY_FIXTURE), then project config, then default
       let fixture = String(input.env?.REPLAY_FIXTURE ?? '')
@@ -96,20 +96,7 @@ export function createReplayAgent(): AgentAdapter {
       let data: any
       let found = false
       try {
-        try {
-          console.error(
-            'replay adapter debug: input.cwd=',
-            input.cwd,
-            'runsDir=',
-            runsDir,
-            'existingRuns=',
-            existingRuns,
-            'nextIndex=',
-            nextIndex,
-            'fixture=',
-            fixture
-          )
-        } catch {}
+        // debug logs removed — keep silent in tests to avoid noisy output
 
         for (const base of baseCandidates) {
           const fixtureDir = path.join(base, fixture)

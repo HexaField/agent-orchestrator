@@ -18,12 +18,12 @@ describe('E2E Scenario A (happy path)', () => {
     writeFileSync(path.join(cwd, 'spec.md'), '# Title')
     try {
       const stub = await startStub()
-      ;(global as any).__AO_E2E_STUB = stub
+      ;(global as any).__E2E_STUB = stub
     } catch {}
   })
 
   afterAll(() => {
-    const stub: any = (global as any).__AO_E2E_STUB
+    const stub: any = (global as any).__E2E_STUB
     if (stub && typeof stub.stop === 'function') void stub.stop()
   })
 
@@ -34,7 +34,7 @@ describe('E2E Scenario A (happy path)', () => {
   })
 
   it('run produces run.json and awaiting_review when spec implemented', async () => {
-    const stub: any = (global as any).__AO_E2E_STUB
+    const stub: any = (global as any).__E2E_STUB
     const stubUrl = stub ? stub.url : undefined
     await seedConfigFor(cwd, { SKIP_VERIFY: '1', AGENT: 'custom', LLM_PROVIDER: 'passthrough', stubUrl })
     const childEnv = { ...process.env, SKIP_VERIFY: '1' }

@@ -106,7 +106,7 @@ export function genNext(): NextTask {
   }
 }
 
-// Async LLM-backed wrappers (used when AO_USE_LLM_GEN=1)
+// Async LLM-backed wrappers (used when USE_LLM_GEN=1)
 export async function genContextAsync(spec?: string): Promise<string> {
   // Prefer project-level configuration only (no env fallback)
   try {
