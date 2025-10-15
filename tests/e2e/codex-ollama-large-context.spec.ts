@@ -122,6 +122,22 @@ test('sumLines sums numbers', async () => {
     fs.writeFileSync(path.join(tmp, '.agent', 'used-mock.txt'), String(usedMock), 'utf8')
   } catch {}
 
+  // Strict integration: fail the test if the mock fallback was used. This
+  // ensures CI verifies a real agent run that writes files into the
+  // workspace. The file is written earlier; prefer reading it to avoid race
+  // conditions.
+  try {
+    const used = fs.readFileSync(path.join(tmp, '.agent', 'used-mock.txt'), 'utf8').trim()
+    if (used === 'true') {
+      throw new Error(
+        'Agent refused to write files (mock fallback was used). Ensure the environment allows the agent to write and ALLOW_COMMANDS is enabled.'
+      )
+    }
+  } catch (e) {
+    // If file missing or any error, treat as a failure (we require explicit real run)
+    throw new Error('Failed integration requirement: could not verify real agent run - ' + String(e))
+  }
+
   // Also inspect the run patches file (if present) to ensure it is not a DRY-RUN output
   try {
     const statePath = path.join(tmp, '.agent', 'state.json')
