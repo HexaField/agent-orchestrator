@@ -8,7 +8,7 @@
     "agent-orchestrator": "bin/agent-orchestrator"
   },
   "scripts": {
-    "build": "tsup src/cli/index.ts --format esm --dts",
+    "build": "tsup src/cli/index.ts --format esm --dts --clean",
     "postbuild": "chmod +x ./bin/agent-orchestrator || true",
     "lint": "eslint . --ext .ts --max-warnings=20",
     "format:check": "prettier --check .",
