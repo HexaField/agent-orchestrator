@@ -69,56 +69,10 @@ const commit = new Command('commit')
         // fall through to API path
       }
 
-      // Prefer project config token; fall back to process.env for tests/legacy
-      let token: string | undefined = undefined
-      try {
-        const { getEffectiveConfig } = await import('../../config')
-        const cfg = await getEffectiveConfig(process.cwd())
-        token = cfg.GITHUB_TOKEN || process.env.GITHUB_TOKEN
-      } catch {
-        token = process.env.GITHUB_TOKEN
-      }
-      if (!token) {
-        throw new Error('PR creation requested but neither `gh` CLI succeeded nor GITHUB_TOKEN provided')
-      }
-
-      try {
-        // ensure branch name exists locally and is pushed
-        const branch = opts.branch ?? `agent/${Date.now()}`
-        await execa('git', ['checkout', '-b', branch], { cwd, reject: false })
-        await execa('git', ['push', '-u', 'origin', branch], { cwd, reject: false })
-
-        const { stdout: remote } = await execa('git', ['config', '--get', 'remote.origin.url'], { cwd })
-        const m = remote.match(/[:/]([^/]+)\/([^/]+)(?:\.git)?$/)
-        if (!m) throw new Error('Cannot parse git remote URL')
-        const owner = m[1]
-        const repo = m[2]
-        const body = JSON.stringify({
-          title: `Automated changelog: ${branch}`,
-          head: branch,
-          base: 'main',
-          body: 'Automated changelog'
-        })
-        await execa(
-          'curl',
-          [
-            '-sS',
-            '-X',
-            'POST',
-            '-H',
-            `Authorization: token ${token}`,
-            '-H',
-            'Accept: application/vnd.github+json',
-            `https://api.github.com/repos/${owner}/${repo}/pulls`,
-            '-d',
-            body
-          ],
-          { cwd }
-        )
-        process.stdout.write('pr: created via API\n')
-      } catch (err) {
-        throw new Error('PR creation failed: ' + String(err))
-      }
+      // `gh` CLI not found or failed — do not attempt token-based API calls.
+      // Warn and skip PR creation rather than requiring a stored token.
+      process.stdout.write('pr: `gh` CLI not available; skipping PR creation\n')
+      return
     }
   })
 

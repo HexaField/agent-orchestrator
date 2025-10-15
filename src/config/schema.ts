@@ -19,8 +19,7 @@ export const ConfigSchema = z.object({
   USE_LLM_GEN: z.boolean().optional(),
   RESPONSE_TYPE: z.enum(['patches', 'files', 'commands', 'mixed']).optional(),
   SKIP_VERIFY: z.boolean().optional(),
-  // Optional token for automated PR creation when `gh` CLI is not available.
-  GITHUB_TOKEN: z.string().optional()
+  
 })
 
 export type AppConfig = z.infer<typeof ConfigSchema>

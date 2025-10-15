@@ -35,18 +35,20 @@ Prerequisites:
 - Install and configure a local `vllm` server or adapter according to the `vllm` adapter docs.
 - If using the `codex-cli` adapter that proxies to a Codex-compatible service, configure its endpoint appropriately. This project no longer relies on cloud OpenAI APIs and only supports local LLM providers.
 
-Example environment variables (local vllm or Ollama + Codex CLI):
+Configuration
+
+Prefer per-project configuration stored in `.agent/config.json` which is seeded
+by `npx agent-orchestrator init --cwd .`. You can also set values via CLI flags
+(`--llm`, `--agent`, etc.) when invoking commands. Example project config keys:
+
+- `LLM_PROVIDER` — one of `vllm`, `passthrough`, `ollama` (default: `ollama`)
+- `LLM_ENDPOINT` — optional HTTP base URL for local LLMs (e.g. `http://localhost:11434/v1`)
+- `AGENT` — which agent adapter to use (e.g. `codex-cli`, `http`, `custom`)
+
+To seed a project config and templates:
 
 ```bash
-# Default: Ollama
-# By default the project will use `ollama` as the LLM provider. To explicitly
-# use vLLM set `LLM_PROVIDER=vllm` and point `LLM_ENDPOINT` at your local
-# vLLM or Ollama HTTP endpoint (example: http://localhost:11434/v1)
-export LLM_PROVIDER="vllm"
-export LLM_ENDPOINT="http://localhost:11434/v1"
-
-# For the Codex agent (codex-cli adapter) configure any credentials or base URL
-# required by the Codex-compatible service you point it at (if applicable).
+npx agent-orchestrator init --cwd .
 ```
 
 3. Run the orchestrator (preview or execute)
@@ -57,11 +59,9 @@ Preview (safe): shows what would happen without executing shell commands. Use th
 npx agent-orchestrator run --cwd . --agent codex-cli --llm vllm --prompt "Implement the user login feature"
 ```
 
-Execute (real changes): enable command execution only when you trust the environment and adapters.
+Execute (real changes): enable command execution only when you trust the project configuration and adapters.
 
-```bash
-ALLOW_COMMANDS=1 npx agent-orchestrator run --cwd . --agent codex-cli --llm vllm --prompt "Implement the user login feature"
-```
+Set `ALLOW_COMMANDS` in `.agent/config.json` to `true` or pass an explicit `--allow-commands` flag if available in the CLI wrapper. The CLI will refuse to execute commands unless project configuration explicitly allows it.
 
 4. Check the orchestrator status and inspect run artifacts
 
