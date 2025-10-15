@@ -30,11 +30,11 @@ jobs:
       - name: Typecheck
         run: npm run typecheck
 
-      - name: Start a minimal HTTP server on port 11434 to satisfy Ollama connectivity
+      - name: Start a minimal HTTP server on port 11434 to satisfy LLM connectivity
         run: |
-          # Serve a small JSON endpoint on port 11434 using Python's http.server
-          # The E2E tests only check that the port is open; a simple server is sufficient.
-          nohup bash -c "printf 'HTTP/1.1 200 OK\nContent-Type: application/json\n\n{}' > /tmp/ollama_stub_response && while true; do nc -l 11434 < /tmp/ollama_stub_response; done" &
+          # Serve a small JSON endpoint on port 11434. The E2E tests only check that
+          # the port is open; a simple server is sufficient.
+          nohup bash -c "printf 'HTTP/1.1 200 OK\nContent-Type: application/json\n\n{}' > /tmp/llm_stub_response && while true; do nc -l 11434 < /tmp/llm_stub_response; done" &
 
       - name: Run E2E tests
         run: npm run e2e
