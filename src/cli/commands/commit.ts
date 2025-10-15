@@ -21,8 +21,8 @@ const commit = new Command('commit')
     try {
       let dryRun = false
       try {
-        const { readProjectConfig } = await import('../../config')
-        const cfg = await readProjectConfig(cwd)
+        const { getEffectiveConfig } = await import('../../config')
+        const cfg = await getEffectiveConfig(cwd)
         dryRun = Boolean(cfg && (cfg as any).DRY_RUN)
       } catch {}
       if (!(process.env.VITEST || process.env.VITEST_WORKER_ID || dryRun)) {
@@ -48,8 +48,8 @@ const commit = new Command('commit')
         process.env.VITEST_WORKER_ID ||
         (await (async () => {
           try {
-            const { readProjectConfig } = await import('../../config')
-            const cfg = await readProjectConfig(process.cwd())
+            const { getEffectiveConfig } = await import('../../config')
+            const cfg = await getEffectiveConfig(process.cwd())
             return Boolean(cfg && (cfg as any).DRY_RUN)
           } catch {
             return false

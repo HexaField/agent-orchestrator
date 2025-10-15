@@ -30,9 +30,9 @@ describe('templates', () => {
     const origCwd = process.cwd()
     try {
       process.chdir(tmp)
-      expect(genResponseType()).toBe('patches')
+      expect(await genResponseType()).toBe('patches')
       await seedConfigFor(tmp, { RESPONSE_TYPE: 'files' })
-      expect(genResponseType()).toBe('files')
+      expect(await genResponseType()).toBe('files')
     } finally {
       process.chdir(origCwd)
       await fs.remove(tmp)

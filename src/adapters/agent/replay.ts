@@ -11,8 +11,8 @@ export function createReplayAgent(): AgentAdapter {
       // prefer explicit per-invocation env override (REPLAY_FIXTURE), then project config, then default
       let fixture = String(input.env?.REPLAY_FIXTURE ?? '')
       try {
-        const { readProjectConfig } = await import('../../config')
-        const cfg = await readProjectConfig(input.cwd || '.')
+        const { getEffectiveConfig } = await import('../../config')
+        const cfg = await getEffectiveConfig(input.cwd || '.')
         if (cfg) {
           if (!fixture) fixture = String((cfg as any).REPLAY_FIXTURE ?? '')
         }

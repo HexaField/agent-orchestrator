@@ -1,6 +1,6 @@
 import fs from 'fs'
 import path from 'path'
-import { readProjectConfig } from '../../config'
+// ...config helpers are dynamically imported where needed
 import { runCommand } from '../../io/shell'
 import type { AgentAdapter } from '../../types/adapters'
 
@@ -11,7 +11,8 @@ export function createCodexCli(): AgentAdapter {
       // Prefer to run the `exec` subcommand which is the non-interactive one-shot mode
       let model = input.env?.LLM_MODEL
       try {
-        const cfg = await readProjectConfig(input.cwd || '.')
+        const { getEffectiveConfig } = await import('../../config')
+        const cfg = await getEffectiveConfig(input.cwd || '.')
         if (cfg && cfg.LLM_MODEL) model = model || cfg.LLM_MODEL
       } catch {}
       // The Codex CLI expects the initial prompt as a positional argument to `codex exec`.
@@ -32,7 +33,8 @@ export function createCodexCli(): AgentAdapter {
       // Prefer project config over environment when available
       let cfgBase: string | undefined = undefined
       try {
-        const cfg = await readProjectConfig(input.cwd || '.')
+        const { getEffectiveConfig } = await import('../../config')
+        const cfg = await getEffectiveConfig(input.cwd || '.')
         if (cfg) cfgBase = cfg.LLM_ENDPOINT
       } catch {}
       // prefer input.env overrides then project config; no process.env fallback
@@ -60,8 +62,9 @@ export function createCodexCli(): AgentAdapter {
         // prefer explicit per-invocation env, otherwise fall back to project config
         let allowCommands = String(input.env?.ALLOW_COMMANDS ?? '')
         try {
-          const cfg = await readProjectConfig(input.cwd || '.')
-          if (allowCommands.trim() === '') allowCommands = String((cfg as any).ALLOW_COMMANDS ?? '')
+          const { getEffectiveConfig } = await import('../../config')
+          const cfg = await getEffectiveConfig(input.cwd || '.')
+          if (allowCommands.trim() === '') allowCommands = String(cfg.ALLOW_COMMANDS ?? '')
         } catch {}
         if (allowCommands.trim() === '1' && finalPrompt) {
           const prefix =
@@ -95,10 +98,10 @@ export function createCodexCli(): AgentAdapter {
         let debugCodeX = String(input.env?.DEBUG_CODEX ?? '')
         let allowFlag = String(input.env?.ALLOW_COMMANDS ?? '')
         try {
-          const { readProjectConfig } = await import('../../config')
-          const cfg = await readProjectConfig(input.cwd || '.')
+          const { getEffectiveConfig } = await import('../../config')
+          const cfg = await getEffectiveConfig(input.cwd || '.')
           if (debugCodeX.trim() === '') debugCodeX = String((cfg as any).DEBUG_CODEX ?? '')
-          if (allowFlag.trim() === '') allowFlag = String((cfg as any).ALLOW_COMMANDS ?? '')
+          if (allowFlag.trim() === '') allowFlag = String(cfg.ALLOW_COMMANDS ?? '')
         } catch {}
         const dump = {
           args,

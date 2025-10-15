@@ -1,12 +1,12 @@
 import { getLLMAdapter } from '../adapters/llm'
-import { readProjectConfig } from '../config'
+import { getEffectiveConfig } from '../config'
 
 export async function callLLM(provider: string, prompt: string) {
   // Prefer per-project config for endpoint and model
   let endpoint: string | undefined = undefined
   let model: string | undefined = undefined
   try {
-    const cfg = await readProjectConfig(process.cwd())
+    const cfg = await getEffectiveConfig(process.cwd())
     if (cfg) {
       endpoint = cfg.LLM_ENDPOINT
       model = cfg.LLM_MODEL

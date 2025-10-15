@@ -1,5 +1,5 @@
 import { getLLMAdapter } from '../adapters/llm'
-import { readProjectConfig } from '../config'
+import { getEffectiveConfig } from '../config'
 
 export type ReviewStatus = 'pending' | 'approved' | 'changes_requested'
 
@@ -60,7 +60,7 @@ export async function reviewCodeAsync(diff: string): Promise<ReviewResult> {
   // Optional LLM-assisted review (opt-in). Prefer project config when present.
   let useLLM = false
   try {
-    const cfg = await readProjectConfig(process.cwd())
+    const cfg = await getEffectiveConfig(process.cwd())
     if (cfg && (cfg as any).USE_LLM_REVIEW) useLLM = true
   } catch {}
 
@@ -70,9 +70,9 @@ export async function reviewCodeAsync(diff: string): Promise<ReviewResult> {
       let endpoint: string | undefined = undefined
       let model: string | undefined = undefined
       try {
-        const cfg = await readProjectConfig(process.cwd())
+        const cfg = await getEffectiveConfig(process.cwd())
         if (cfg) {
-          provider = (cfg as any).LLM_PROVIDER || provider
+          provider = cfg.LLM_PROVIDER || provider
           endpoint = cfg.LLM_ENDPOINT
           model = cfg.LLM_MODEL
         }
@@ -99,17 +99,8 @@ export async function reviewCodeAsync(diff: string): Promise<ReviewResult> {
 // Backwards-compatible sync wrapper for existing callers that expect a sync function.
 export function reviewCode(diff: string): ReviewResult {
   // If async LLM review is enabled, prefer async path but fall back to heuristics
-  let useLLM = false
-  try {
-    const cfg = readProjectConfig(process.cwd())
-    if (cfg && (cfg as any).USE_LLM_REVIEW) useLLM = true
-  } catch {}
-
-  if (useLLM) {
-    // best-effort: call heuristic and leave hint that LLM review is available
-    const h = heuristicReview(diff)
-    if (h.status === 'approved') h.notes = h.notes + ' (LLM-review available if enabled)'
-    return h
-  }
+  // Synchronous wrapper: cannot perform async config reads here. We always use the
+  // heuristic in the sync path. Callers that want LLM-based review should use
+  // `reviewCodeAsync` which respects project configuration.
   return heuristicReview(diff)
 }

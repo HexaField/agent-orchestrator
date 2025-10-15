@@ -8,9 +8,9 @@ export async function runVerification(cwd: string = process.cwd()) {
 
   // dynamic import so tests can mock the config module before this file is evaluated
   try {
-    const cfgMod = await import('../config')
-    const cfg = await cfgMod.readProjectConfig(cwd)
-    if (cfg && (cfg as any).SKIP_VERIFY) {
+    const { getEffectiveConfig } = await import('../config')
+    const cfg = await getEffectiveConfig(cwd)
+    if (cfg && cfg.SKIP_VERIFY) {
       return { skipped: true, lint: 'pass', typecheck: 'pass', tests: { passed: 0, failed: 0 } }
     }
   } catch {

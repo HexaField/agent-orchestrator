@@ -1,5 +1,5 @@
 import { getLLMAdapter } from '../adapters/llm'
-import { readProjectConfig } from '../config'
+import { getEffectiveConfig } from '../config'
 import type { OrchestratorStatus, WhatDone } from '../types/models'
 
 export function routeWhatDone(what: WhatDone): OrchestratorStatus {
@@ -112,7 +112,7 @@ export async function whatDoneFromTextAsync(text: string): Promise<WhatDone> {
   // prefer project config flag; do not use env fallbacks
   let useLLM = false
   try {
-    const cfg = await readProjectConfig(process.cwd())
+    const cfg = await getEffectiveConfig(process.cwd())
     if (cfg && (cfg as any).USE_LLM_EVAL) useLLM = true
   } catch {}
 
@@ -124,9 +124,9 @@ export async function whatDoneFromTextAsync(text: string): Promise<WhatDone> {
     let endpoint: string | undefined = undefined
     let model: string | undefined = undefined
     try {
-      const cfg = await readProjectConfig(process.cwd())
+      const cfg = await getEffectiveConfig(process.cwd())
       if (cfg) {
-        provider = (cfg as any).LLM_PROVIDER || (cfg.LLM_PROVIDER as string) || provider
+        provider = cfg.LLM_PROVIDER || (cfg.LLM_PROVIDER as string) || provider
         endpoint = cfg.LLM_ENDPOINT
         model = cfg.LLM_MODEL
       }

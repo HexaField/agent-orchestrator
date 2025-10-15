@@ -18,9 +18,9 @@ const review = new Command('review')
         let rec
         let useLLM = false
         try {
-          const { readProjectConfig } = await import('../../config')
-          const cfg = await readProjectConfig(cwd)
-          if (cfg && (cfg as any).USE_LLM_GEN) useLLM = true
+          const { getEffectiveConfig } = await import('../../config')
+          const cfg = await getEffectiveConfig(cwd)
+          if (cfg && cfg.USE_LLM_GEN) useLLM = true
         } catch {}
         if (useLLM) {
           const { genChangeAsync } = await import('../../core/templates')

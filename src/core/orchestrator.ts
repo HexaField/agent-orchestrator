@@ -2,7 +2,7 @@ import { promises as fs } from 'fs'
 import path from 'path'
 import { getAgentAdapter } from '../adapters/agent/index'
 import { getLLMAdapter } from '../adapters/llm/index'
-import { ensureProjectConfig } from '../config'
+import { getEffectiveConfig } from '../config'
 import { ensureDir, readJsonSafe, writeFileAtomic, writeJsonAtomic } from '../io/fs'
 import type { StateJsonV1, WhatDone } from '../types/models'
 import { runVerification } from '../validation/verify'
@@ -74,20 +74,20 @@ export async function runOnce(
     await setState(cwd, { currentRunId: runId, status: 'running' } as any)
     const startedAt = new Date().toISOString()
 
-    // Load per-project config (seeding .agent/config.json if missing)
-    const projectCfg = await ensureProjectConfig(cwd)
-    // (no-op) projectCfg is used below; avoid noisy debug prints in normal runs
+    // Load effective config (project overrides environment). This will seed
+    // the project config if missing via the underlying helper.
+    const cfg = await getEffectiveConfig(cwd)
 
-    const llmName = opts.llm || projectCfg.LLM_PROVIDER || 'passthrough'
-    const model = opts.model || projectCfg.LLM_MODEL
-    const endpoint = opts.endpoint || projectCfg.LLM_ENDPOINT
+    const llmName = opts.llm || cfg.LLM_PROVIDER || 'passthrough'
+    const model = opts.model || cfg.LLM_MODEL
+    const endpoint = opts.endpoint || cfg.LLM_ENDPOINT
 
     const llm = getLLMAdapter(llmName, {
       endpoint,
       model
     })
 
-    const agentName = opts.agent || projectCfg.AGENT || 'codex-cli'
+    const agentName = opts.agent || cfg.AGENT || 'codex-cli'
     const agent = getAgentAdapter(agentName)
 
     // Build structured inputs for the run
@@ -99,7 +99,7 @@ export async function runOnce(
     const checklist = genChecklist(specText)
     const { genContextAsync } = await import('./templates')
     const contextPrompt = await genContextAsync(specText)
-    const responseType = genResponseType()
+    const responseType = await genResponseType()
 
     // if a reviewer previously requested changes, include the Recommendations
     // (stored as nextTask in state) as part of the context prompts
@@ -178,9 +178,12 @@ export async function runOnce(
       if (out) {
         // Guard: only execute commands when explicitly enabled via project config
         try {
-          const { readProjectConfig, ensureProjectConfig } = await import('../config')
-          const cfg = (await readProjectConfig(cwd)) || (await ensureProjectConfig(cwd))
-          if (cfg && (cfg as any).ALLOW_COMMANDS) {
+          // We already loaded the effective config above into `cfg` and use that
+          // to decide whether command execution is allowed. The dynamic import is
+          // retained for safety in case this block runs in isolation.
+          const { getEffectiveConfig: _get } = await import('../config')
+          const localCfg = await _get(cwd)
+          if (localCfg && (localCfg as any).ALLOW_COMMANDS) {
             const { exec } = await import('child_process')
             // NOTE: for safety we run commands synchronously and capture output
             await new Promise<void>((resolve, reject) => {
@@ -204,7 +207,7 @@ export async function runOnce(
     // issues reading the config again inside runVerification).
     let verification: any
     try {
-      if (projectCfg && (projectCfg as any).SKIP_VERIFY) {
+      if (cfg && cfg.SKIP_VERIFY) {
         verification = {
           skipped: true,
           reason: 'SKIP_VERIFY=true in project config',

@@ -7,8 +7,8 @@ export function createHttpAgent(): AgentAdapter {
       // Resolve endpoint strictly: prefer input.env, then project config.
       let endpoint = input.env && input.env['AGENT_HTTP_ENDPOINT']
       try {
-        const { readProjectConfig } = await import('../../config')
-        const cfg = await readProjectConfig(input.cwd || '.')
+        const { getEffectiveConfig } = await import('../../config')
+        const cfg = await getEffectiveConfig(input.cwd || '.')
         if (cfg && !endpoint) endpoint = (cfg as any).AGENT_HTTP_ENDPOINT
       } catch {}
       if (!endpoint) throw new Error('AGENT_HTTP_ENDPOINT not configured for http agent')

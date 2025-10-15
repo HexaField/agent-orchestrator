@@ -1,6 +1,6 @@
 import { Command } from 'commander'
 import path from 'path'
-import { loadConfig } from '../../config/defaults'
+import { getEffectiveConfig } from '../../config'
 import { runOnce } from '../../core/orchestrator'
 
 const run = new Command('run')
@@ -13,12 +13,12 @@ const run = new Command('run')
   .option('--prompt <text>', 'Initial agent prompt')
   .option('--apply-patches', 'Apply patches emitted by the agent when responseType=patches', false)
   .action(async (opts) => {
-    const cfg = loadConfig()
     const cwd = path.resolve(process.cwd(), opts.cwd ?? '.')
+    const cfg = await getEffectiveConfig(cwd)
     await runOnce(cwd, {
       llm: opts.llm ?? cfg.LLM_PROVIDER,
-      endpoint: cfg.LLM_ENDPOINT,
-      model: cfg.LLM_MODEL,
+      endpoint: opts.endpoint ?? cfg.LLM_ENDPOINT,
+      model: opts.model ?? cfg.LLM_MODEL,
       agent: opts.agent ?? cfg.AGENT,
       prompt: opts.prompt,
       force: Boolean(opts.force),
@@ -38,7 +38,7 @@ const run = new Command('run')
             console.warn('Patches were not applied:', res.path)
           }
         }
-      } catch (e) {
+      } catch {
         // ignore failures to apply patches
       }
     }

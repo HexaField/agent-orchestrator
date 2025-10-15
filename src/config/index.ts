@@ -33,20 +33,40 @@ export async function ensureProjectConfig(cwd: string = process.cwd()): Promise<
   return cfg
 }
 
-export async function readProjectConfig(cwd: string = process.cwd()): Promise<AppConfig | null> {
-  const cfgPath = path.join(cwd, '.agent', CONFIG_NAME)
-  try {
-    if (!(await fs.pathExists(cfgPath))) return null
-    return (await fs.readJson(cfgPath)) as AppConfig
-  } catch {
-    return null
-  }
-}
-
 export async function writeProjectConfig(cfg: AppConfig, cwd: string = process.cwd()): Promise<void> {
   const cfgPath = path.join(cwd, '.agent', CONFIG_NAME)
   await fs.ensureDir(path.dirname(cfgPath))
   await fs.writeJson(cfgPath, cfg, { spaces: 2 })
+}
+
+/**
+ * Return an effective configuration by merging environment-based config and
+ * project config. Precedence: project config overrides environment values.
+ */
+export async function getEffectiveConfig(
+  cwd: string = process.cwd(),
+  env: Record<string, string | undefined> = process.env
+): Promise<AppConfig> {
+  // Load env-based config tolerant (non-strict)
+  const { loadConfig } = await import('./defaults')
+  const envCfg = loadConfig(env)
+
+  // Load (or seed) project config via ensureProjectConfig which returns the
+  // project config or creates a seeded one from schema defaults. This replaces
+  // the previous two-step read/seed behavior and centralizes project config IO.
+  const projectCfg = await ensureProjectConfig(cwd)
+
+  // Merge: project overrides env. Only copy keys present in schema (shallow merge).
+  const merged: any = { ...envCfg, ...projectCfg }
+  // Ensure result conforms to AppConfig shape by parsing defaults from schema
+  try {
+    const { ConfigSchema } = await import('./schema')
+    // parse will fill defaults for missing values
+    return ConfigSchema.parse(merged) as AppConfig
+  } catch {
+    // If parsing fails, fall back to project config (which should have been seeded)
+    return projectCfg as AppConfig
+  }
 }
 
 export { AppConfig }

@@ -12,7 +12,12 @@ export const ConfigSchema = z.object({
   LLM_MODEL: z.string().default('gpt-oss:20b'),
   LLM_ENDPOINT: z.string().url().optional(),
   // Optional/legacy
-  CODEX_API_BASE: z.string().url().optional()
+  CODEX_API_BASE: z.string().url().optional(),
+  // Project-only optional flags
+  ALLOW_COMMANDS: z.boolean().optional(),
+  USE_LLM_GEN: z.boolean().optional(),
+  RESPONSE_TYPE: z.enum(['patches', 'files', 'commands', 'mixed']).optional(),
+  SKIP_VERIFY: z.boolean().optional()
 })
 
 export type AppConfig = z.infer<typeof ConfigSchema>

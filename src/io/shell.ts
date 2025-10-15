@@ -1,5 +1,5 @@
 import { execa } from 'execa'
-import { readProjectConfig } from '../config'
+// config helpers imported dynamically where needed
 
 const REDACT_KEYS = ['TOKEN', 'KEY', 'SECRET', 'PASSWORD']
 
@@ -32,10 +32,11 @@ export async function runCommand(
   let allow = String(opts.env?.ALLOW_COMMANDS ?? '').trim() === '1'
   let dryRun = String(opts.env?.DRY_RUN ?? '').trim() === '1'
   try {
-    const cfg = await readProjectConfig(opts.cwd)
+    const { getEffectiveConfig } = await import('../config')
+    const cfg = await getEffectiveConfig(opts.cwd)
     if (cfg) {
       // Prefer an explicit input.env override; otherwise use the project config values
-      allow = String(opts.env?.ALLOW_COMMANDS ?? (cfg as any).ALLOW_COMMANDS ?? '').trim() === '1'
+      allow = String(opts.env?.ALLOW_COMMANDS ?? cfg.ALLOW_COMMANDS ?? '').trim() === '1'
       dryRun = String(opts.env?.DRY_RUN ?? (cfg as any).DRY_RUN ?? '').trim() === '1'
     }
   } catch {}

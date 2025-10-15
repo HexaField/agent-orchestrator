@@ -1,6 +1,4 @@
-import fs from 'fs'
 import { marked } from 'marked'
-import path from 'path'
 import type { NextTask } from '../types/models'
 import { genChangeLLM, genClarifyLLM, genContextLLM } from './generatorClient'
 
@@ -27,18 +25,12 @@ export function genContext(spec?: string): string {
   return `Context summary: ${ctx}\n\nUse the checklist and acceptance criteria to guide changes.`
 }
 
-export function genResponseType(): 'patches' | 'files' | 'commands' | 'mixed' {
-  // Read project config synchronously and return RESPONSE_TYPE if set.
+export async function genResponseType(): Promise<'patches' | 'files' | 'commands' | 'mixed'> {
   try {
-    const cfgPath = path.join(process.cwd(), '.agent', 'config.json')
-    if (fs.existsSync(cfgPath)) {
-      const raw = fs.readFileSync(cfgPath, 'utf8')
-      const cfg = JSON.parse(raw)
-      if (cfg && (cfg as any).RESPONSE_TYPE) {
-        const r = (cfg as any).RESPONSE_TYPE
-        if (r === 'patches' || r === 'files' || r === 'commands' || r === 'mixed') return r
-      }
-    }
+    const { getEffectiveConfig } = await import('../config')
+    const cfg = await getEffectiveConfig(process.cwd())
+    const r = cfg.RESPONSE_TYPE
+    if (r === 'patches' || r === 'files' || r === 'commands' || r === 'mixed') return r
   } catch {}
   return 'mixed'
 }
@@ -110,11 +102,10 @@ export function genNext(): NextTask {
 export async function genContextAsync(spec?: string): Promise<string> {
   // Prefer project-level configuration only (no env fallback)
   try {
-    const { ensureProjectConfig, readProjectConfig } = await import('../config')
-    // prefer explicit project config; fall back to env-based seed when present
-    const cfg = (await readProjectConfig(process.cwd())) || (await ensureProjectConfig(process.cwd()))
-    if (!cfg || !(cfg as any).USE_LLM_GEN) return genContext(spec)
-    const provider = (cfg as any).LLM_PROVIDER || 'passthrough'
+    const { getEffectiveConfig } = await import('../config')
+    const cfg = await getEffectiveConfig(process.cwd())
+    if (!cfg || !cfg.USE_LLM_GEN) return genContext(spec)
+    const provider = cfg.LLM_PROVIDER || 'passthrough'
     return genContextLLM(provider, spec)
   } catch {
     return genContext(spec)
@@ -123,10 +114,10 @@ export async function genContextAsync(spec?: string): Promise<string> {
 
 export async function genClarifyAsync(spec?: string): Promise<string> {
   try {
-    const { ensureProjectConfig, readProjectConfig } = await import('../config')
-    const cfg = (await readProjectConfig(process.cwd())) || (await ensureProjectConfig(process.cwd()))
-    if (!cfg || !(cfg as any).USE_LLM_GEN) return genClarify(spec)
-    const provider = (cfg as any).LLM_PROVIDER || 'passthrough'
+    const { getEffectiveConfig } = await import('../config')
+    const cfg = await getEffectiveConfig(process.cwd())
+    if (!cfg || !cfg.USE_LLM_GEN) return genClarify(spec)
+    const provider = cfg.LLM_PROVIDER || 'passthrough'
     return genClarifyLLM(provider, spec)
   } catch {
     return genClarify(spec)
@@ -136,10 +127,10 @@ export async function genClarifyAsync(spec?: string): Promise<string> {
 export async function genChangeAsync(spec?: string, reason?: string): Promise<NextTask> {
   // Use project config only to decide if we call the LLM for generation
   try {
-    const { ensureProjectConfig, readProjectConfig } = await import('../config')
-    const cfg = (await readProjectConfig(process.cwd())) || (await ensureProjectConfig(process.cwd()))
-    if (!cfg || !(cfg as any).USE_LLM_GEN) return genChange(spec, reason)
-    const provider = (cfg as any).LLM_PROVIDER || 'passthrough'
+    const { getEffectiveConfig } = await import('../config')
+    const cfg = await getEffectiveConfig(process.cwd())
+    if (!cfg || !cfg.USE_LLM_GEN) return genChange(spec, reason)
+    const provider = cfg.LLM_PROVIDER || 'passthrough'
     try {
       const text = await genChangeLLM(provider, spec, reason)
       const jsonMatch = text.match(/```json\n([\s\S]*?)\n```/) || text.match(/\{[\s\S]*\}/)
