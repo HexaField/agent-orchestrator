@@ -2,7 +2,7 @@
   "runId": "run-2025-10-14T20-23-59.058Z",
   "startedAt": "2025-10-14T20:23:59.060Z",
   "agent": { "name": "codex-cli", "version": "0" },
-  "llm": { "provider": "openai-compatible", "model": "gpt-oss:20b", "params": { "temperature": 0 } },
+  "llm": { "provider": "ollama", "model": "gpt-oss:20b", "params": { "temperature": 0 } },
   "inputs": {
     "initialAgentPrompt": "Implement the spec.",
     "contextPrompts": [

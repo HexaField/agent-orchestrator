@@ -37,14 +37,8 @@ export function createCodexCli(): AgentAdapter {
         const cfg = await getEffectiveConfig(input.cwd || '.')
         if (cfg) cfgBase = cfg.LLM_ENDPOINT
       } catch {}
-      // prefer input.env overrides then project config; no process.env fallback
-      const codeXBaseFinal =
-        input.env?.CODEX_API_BASE ||
-        input.env?.OLLAMA_API_BASE ||
-        input.env?.OLLAMA_SERVER_URL ||
-        input.env?.VLLM_SERVER_URL ||
-        input.env?.LLM_ENDPOINT ||
-        cfgBase
+      // Use only the canonical LLM_ENDPOINT (no legacy fallbacks).
+      const codeXBaseFinal = input.env?.LLM_ENDPOINT || cfgBase
       if (codeXBaseFinal) {
         // set model_provider and provider base via -c overrides
         args.push('-c', 'model_provider=ollama')
@@ -80,10 +74,10 @@ export function createCodexCli(): AgentAdapter {
       // Use only explicit input.env entries for the child process env so tests
       // don't accidentally pick up the surrounding process environment.
       const env = Object.assign({}, input.env || {})
-      // Ensure OPENAI_API_BASE / CODEX_API_BASE are set only when an explicit base was provided
+  // Ensure any provider base is set only when an explicit LLM endpoint was provided
       if (codeXBaseFinal) {
-        env.OPENAI_API_BASE = codeXBaseFinal
-        env.CODEX_API_BASE = env.CODEX_API_BASE || codeXBaseFinal
+        // Set only the canonical endpoint in the child process env.
+        env.LLM_ENDPOINT = env.LLM_ENDPOINT || codeXBaseFinal
       }
 
       // Persist a debug file into the agent dir so test runs can inspect the exact
@@ -106,8 +100,7 @@ export function createCodexCli(): AgentAdapter {
         const dump = {
           args,
           env: {
-            OPENAI_API_BASE: env.OPENAI_API_BASE,
-            CODEX_API_BASE: env.CODEX_API_BASE || env.OPENAI_API_BASE,
+            LLM_ENDPOINT: env.LLM_ENDPOINT,
             DEBUG_CODEX: debugCodeX || undefined,
             ALLOW_COMMANDS: allowFlag || undefined,
             PATH: env.PATH || process.env.PATH,
@@ -122,12 +115,7 @@ export function createCodexCli(): AgentAdapter {
 
       if (input.env && input.env['DEBUG_CODEX'] === '1') {
         console.error('DEBUG codex-cli args=', JSON.stringify(args))
-        console.error(
-          'DEBUG codex-cli OPENAI_API_BASE=',
-          env.OPENAI_API_BASE,
-          'CODEX_API_BASE=',
-          input.env?.CODEX_API_BASE
-        )
+        console.error('DEBUG codex-cli LLM_ENDPOINT=', env.LLM_ENDPOINT)
       }
 
       return runCommand('codex', args, {

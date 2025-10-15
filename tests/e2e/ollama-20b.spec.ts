@@ -33,10 +33,10 @@ const repoRoot = path.resolve(__dirname, '../../')
 const cli = path.resolve(__dirname, '../../bin/agent-orchestrator')
 const fixtureSpec = path.join(__dirname, '..', 'fixtures', 'simple-spec', 'spec.md')
 
-// Ollama OpenAI-compatible endpoint used for both LLM and Codex CLI
-const OLLAMA_ENDPOINT = 'http://localhost:11434/v1'
-const OLLAMA_HOST = 'localhost'
-const OLLAMA_PORT = 11434
+// LLM endpoint used for both LLM and Codex CLI
+const LLM_ENDPOINT = 'http://localhost:11434/v1'
+const LLM_HOST = 'localhost'
+const LLM_PORT = 11434
 
 // Common env for runs
 function buildEnv(extra: Record<string, string> = {}) {
@@ -48,28 +48,17 @@ function buildEnv(extra: Record<string, string> = {}) {
   }
   Object.assign(baseEnv, {
     // Keep non-AO env vars that other tooling expects. per-project flags are seeded via seedConfigFor.
-    LLM_PROVIDER: 'openai-compatible',
-    LLM_ENDPOINT: OLLAMA_ENDPOINT,
+    LLM_PROVIDER: 'ollama',
+    LLM_ENDPOINT: LLM_ENDPOINT,
     LLM_MODEL: 'gpt-oss:20b',
     // Default to the replay agent for fast deterministic E2E runs. Tests can
     // override by seeding REPLAY_FIXTURE or AGENT via seedConfigFor.
     AGENT: extra?.AGENT || 'agent-replay',
-    CODEX_API_BASE: OLLAMA_ENDPOINT,
-    OPENAI_API_BASE: OLLAMA_ENDPOINT,
+  // Legacy provider-specific env vars removed; use LLM_ENDPOINT only.
     // ensure quick timeouts for tests
     LLM_TIMEOUT_MS: '60000',
     ...extra
   })
-
-  // Remove any cloud API key environment variables that could cause the Codex CLI
-  // to attempt using a remote cloud provider instead of the local Ollama endpoint.
-  delete baseEnv['OPENAI_API_KEY']
-  delete baseEnv['OPENAI_KEY']
-  delete baseEnv['OPENAI_API_KEY_ORG']
-  delete baseEnv['CODEX_API_KEY']
-  delete baseEnv['CODEX_TOKEN']
-  delete baseEnv['CODex_TOKEN']
-  delete baseEnv['CODex_API_KEY']
 
   return baseEnv
 }
@@ -92,7 +81,7 @@ model_provider = "ollama"
 
 [model_providers.ollama]
 name     = "Ollama"
-base_url = "${OLLAMA_ENDPOINT}"
+  base_url = "${LLM_ENDPOINT}"
 `
     // Write both ao-config.toml (used by some tooling) and config.toml (used by the codex CLI)
     require('fs').writeFileSync(path.join(codexDir, 'ao-config.toml'), conf, 'utf8')
@@ -103,7 +92,7 @@ model_provider = "ollama"
 
 [model_providers.ollama]
 name = "Ollama"
-base_url = "${OLLAMA_ENDPOINT}"
+  base_url = "${LLM_ENDPOINT}"
 `
     require('fs').writeFileSync(path.join(codexDir, 'config.toml'), cfg, 'utf8')
   } catch {
@@ -162,7 +151,7 @@ async function applyLatestAgentPatchIfAny(workdir: string) {
   }
 }
 
-describe('E2E Ollama gpt-oss:20b (openai-compatible) suite', () => {
+describe('E2E Ollama gpt-oss:20b (ollama) suite', () => {
   let skippable = false
 
   beforeAll(async () => {
@@ -175,7 +164,7 @@ describe('E2E Ollama gpt-oss:20b (openai-compatible) suite', () => {
       return
     } catch {
       // if we can't start a stub, fall back to checking for a local Ollama
-      const ok = await isPortOpen(OLLAMA_HOST, OLLAMA_PORT, 1000)
+  const ok = await isPortOpen(LLM_HOST, LLM_PORT, 1000)
       if (!ok) skippable = true
     }
   })
@@ -221,11 +210,11 @@ describe('E2E Ollama gpt-oss:20b (openai-compatible) suite', () => {
 
       // seed project config so runtime reads .agent/config.json instead of env fallbacks
       const stub: any = (global as any).__E2E_STUB
-      const stubUrl = stub ? stub.url : OLLAMA_ENDPOINT
+          const stubUrl = stub ? stub.url : LLM_ENDPOINT
       await seedConfigFor(tmp, {
-        LLM_PROVIDER: 'openai-compatible',
+        LLM_PROVIDER: 'ollama',
         LLM_MODEL: 'gpt-oss:20b',
-        LLM_ENDPOINT: stubUrl,
+            LLM_ENDPOINT: stubUrl,
         AGENT: 'agent-replay'
       })
 
@@ -343,8 +332,8 @@ describe('E2E Ollama gpt-oss:20b (openai-compatible) suite', () => {
       cpSync(path.join(__dirname, '..', 'fixtures', 'simple-spec', 'spec.md'), path.join(tmp, 'spec.md'))
       await execa('git', ['init'], { cwd: tmp })
       await seedConfigFor(tmp, {
-        LLM_PROVIDER: 'openai-compatible',
-        LLM_ENDPOINT: OLLAMA_ENDPOINT,
+        LLM_PROVIDER: 'ollama',
+  LLM_ENDPOINT: LLM_ENDPOINT,
         AGENT: 'agent-replay'
       })
       await execa('node', [cli, 'init', '--cwd', tmp], { env: prepareExecEnv(tmp) })
@@ -406,8 +395,8 @@ describe('E2E Ollama gpt-oss:20b (openai-compatible) suite', () => {
       cpSync(fixtureSpec, path.join(tmp, 'spec.md'))
       await execa('git', ['init'], { cwd: tmp })
       await seedConfigFor(tmp, {
-        LLM_PROVIDER: 'openai-compatible',
-        LLM_ENDPOINT: OLLAMA_ENDPOINT,
+        LLM_PROVIDER: 'ollama',
+  LLM_ENDPOINT: LLM_ENDPOINT,
         AGENT: 'agent-replay'
       })
       await execa('node', [cli, 'init', '--cwd', tmp], { env: prepareExecEnv(tmp) })
@@ -484,8 +473,8 @@ describe('E2E Ollama gpt-oss:20b (openai-compatible) suite', () => {
       cpSync(fixtureSpec, path.join(tmp, 'spec.md'))
       await execa('git', ['init'], { cwd: tmp })
       await seedConfigFor(tmp, {
-        LLM_PROVIDER: 'openai-compatible',
-        LLM_ENDPOINT: OLLAMA_ENDPOINT,
+        LLM_PROVIDER: 'ollama',
+  LLM_ENDPOINT: LLM_ENDPOINT,
         AGENT: 'agent-replay'
       })
       await execa('node', [cli, 'init', '--cwd', tmp], { env: prepareExecEnv(tmp) })

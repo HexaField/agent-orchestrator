@@ -105,7 +105,7 @@ export async function genContextAsync(spec?: string): Promise<string> {
     const { getEffectiveConfig } = await import('../config')
     const cfg = await getEffectiveConfig(process.cwd())
     if (!cfg || !cfg.USE_LLM_GEN) return genContext(spec)
-    const provider = cfg.LLM_PROVIDER || 'passthrough'
+  const provider = cfg.LLM_PROVIDER || 'ollama'
     return genContextLLM(provider, spec)
   } catch {
     return genContext(spec)
@@ -117,7 +117,7 @@ export async function genClarifyAsync(spec?: string): Promise<string> {
     const { getEffectiveConfig } = await import('../config')
     const cfg = await getEffectiveConfig(process.cwd())
     if (!cfg || !cfg.USE_LLM_GEN) return genClarify(spec)
-    const provider = cfg.LLM_PROVIDER || 'passthrough'
+  const provider = cfg.LLM_PROVIDER || 'ollama'
     return genClarifyLLM(provider, spec)
   } catch {
     return genClarify(spec)
@@ -130,7 +130,7 @@ export async function genChangeAsync(spec?: string, reason?: string): Promise<Ne
     const { getEffectiveConfig } = await import('../config')
     const cfg = await getEffectiveConfig(process.cwd())
     if (!cfg || !cfg.USE_LLM_GEN) return genChange(spec, reason)
-    const provider = cfg.LLM_PROVIDER || 'passthrough'
+  const provider = cfg.LLM_PROVIDER || 'ollama'
     try {
       const text = await genChangeLLM(provider, spec, reason)
       const jsonMatch = text.match(/```json\n([\s\S]*?)\n```/) || text.match(/\{[\s\S]*\}/)

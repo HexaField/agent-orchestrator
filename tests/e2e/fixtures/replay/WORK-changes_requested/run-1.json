@@ -2,7 +2,7 @@
   "runId": "run-2025-10-14T11-53-38.070Z",
   "startedAt": "2025-10-14T11:53:38.072Z",
   "agent": { "name": "codex-cli", "version": "0" },
-  "llm": { "provider": "openai-compatible", "model": "gpt-oss:20b", "params": { "temperature": 0 } },
+  "llm": { "provider": "ollama", "model": "gpt-oss:20b", "params": { "temperature": 0 } },
   "inputs": { "initialAgentPrompt": "Implement the spec.", "contextPrompts": [], "checklist": [] },
   "outputs": { "patches": [], "stdout": "Please add another unit test to satisfy gating", "stderr": "" },
   "whatDone": "changes_requested",

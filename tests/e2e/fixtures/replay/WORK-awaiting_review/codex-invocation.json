@@ -14,8 +14,7 @@
     "Implement the spec."
   ],
   "env": {
-    "OPENAI_API_BASE": "http://localhost:11434/v1",
-    "CODEX_API_BASE": "http://localhost:11434/v1",
+    "LLM_ENDPOINT": "http://localhost:11434/v1",
     "DEBUG_CODEX": "1",
     "ALLOW_COMMANDS": "1",
     "PATH": "<REPO_ROOT>/node_modules/.bin:/usr/local/bin:/usr/bin:/bin",
