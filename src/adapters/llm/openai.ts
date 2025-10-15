@@ -35,7 +35,8 @@ async function retryFetch(url: string, opts: RequestInit, retries = 3) {
 
 export function createOpenAI(opts: { endpoint?: string; model?: string } = {}): LLMAdapter {
   const endpoint = opts.endpoint ?? 'https://api.openai.com/v1'
-  const model = opts.model ?? process.env.LLM_MODEL ?? 'gpt-3.5-turbo'
+  const model = opts.model ?? 'gpt-3.5-turbo'
+  // API key remains environment-based (secrets should not be written to project config)
   const apiKey = process.env.OPENAI_API_KEY ?? process.env.LLM_API_KEY
 
   return {

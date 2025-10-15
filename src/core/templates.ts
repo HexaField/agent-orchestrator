@@ -1,4 +1,6 @@
+import fs from 'fs'
 import { marked } from 'marked'
+import path from 'path'
 import type { NextTask } from '../types/models'
 import { genChangeLLM, genClarifyLLM, genContextLLM } from './generatorClient'
 
@@ -26,8 +28,18 @@ export function genContext(spec?: string): string {
 }
 
 export function genResponseType(): 'patches' | 'files' | 'commands' | 'mixed' {
-  const env = process.env.AO_RESPONSE_TYPE
-  if (env === 'patches' || env === 'files' || env === 'commands' || env === 'mixed') return env
+  // Read project config synchronously and return RESPONSE_TYPE if set.
+  try {
+    const cfgPath = path.join(process.cwd(), '.agent', 'config.json')
+    if (fs.existsSync(cfgPath)) {
+      const raw = fs.readFileSync(cfgPath, 'utf8')
+      const cfg = JSON.parse(raw)
+      if (cfg && (cfg as any).RESPONSE_TYPE) {
+        const r = (cfg as any).RESPONSE_TYPE
+        if (r === 'patches' || r === 'files' || r === 'commands' || r === 'mixed') return r
+      }
+    }
+  } catch {}
   return 'mixed'
 }
 
@@ -96,48 +108,61 @@ export function genNext(): NextTask {
 
 // Async LLM-backed wrappers (used when AO_USE_LLM_GEN=1)
 export async function genContextAsync(spec?: string): Promise<string> {
-  if (process.env.AO_USE_LLM_GEN !== '1') return genContext(spec)
-  const provider = process.env.AO_LLM_PROVIDER || 'passthrough'
-  return genContextLLM(provider, spec)
+  // Prefer project-level configuration only (no env fallback)
+  try {
+    const { ensureProjectConfig, readProjectConfig } = await import('../config')
+    // prefer explicit project config; fall back to env-based seed when present
+    const cfg = (await readProjectConfig(process.cwd())) || (await ensureProjectConfig(process.cwd()))
+    if (!cfg || !(cfg as any).USE_LLM_GEN) return genContext(spec)
+    const provider = (cfg as any).LLM_PROVIDER || 'passthrough'
+    return genContextLLM(provider, spec)
+  } catch {
+    return genContext(spec)
+  }
 }
 
 export async function genClarifyAsync(spec?: string): Promise<string> {
-  if (process.env.AO_USE_LLM_GEN !== '1') return genClarify(spec)
-  const provider = process.env.AO_LLM_PROVIDER || 'passthrough'
+  try {
+    const { ensureProjectConfig, readProjectConfig } = await import('../config')
+  const cfg = (await readProjectConfig(process.cwd())) || (await ensureProjectConfig(process.cwd()))
+  if (!cfg || !(cfg as any).USE_LLM_GEN) return genClarify(spec)
+  const provider = (cfg as any).LLM_PROVIDER || 'passthrough'
   return genClarifyLLM(provider, spec)
+  } catch {
+    return genClarify(spec)
+  }
 }
 
 export async function genChangeAsync(spec?: string, reason?: string): Promise<NextTask> {
-  if (process.env.AO_USE_LLM_GEN !== '1') return genChange(spec, reason)
-  const provider = process.env.AO_LLM_PROVIDER || 'passthrough'
-  const text = await genChangeLLM(provider, spec, reason)
-
-  // Attempt to extract JSON from the LLM response. LLMs sometimes wrap JSON in
-  // markdown code fences; handle that and parse safely.
-  const jsonMatch = text.match(/```json\n([\s\S]*?)\n```/) || text.match(/\{[\s\S]*\}/)
-  if (jsonMatch) {
-    const jsonText = jsonMatch[1] ? jsonMatch[1] : jsonMatch[0]
+  // Use project config only to decide if we call the LLM for generation
+  try {
+    const { ensureProjectConfig, readProjectConfig } = await import('../config')
+  const cfg = (await readProjectConfig(process.cwd())) || (await ensureProjectConfig(process.cwd()))
+  if (!cfg || !(cfg as any).USE_LLM_GEN) return genChange(spec, reason)
+  const provider = (cfg as any).LLM_PROVIDER || 'passthrough'
     try {
-      const obj = JSON.parse(jsonText)
-      // Basic validation
-      if (obj && typeof obj.title === 'string' && typeof obj.summary === 'string') {
-        return {
-          id: obj.id || 'rec-' + Math.random().toString(36).slice(2, 8),
-          title: obj.title,
-          summary: obj.summary,
-          acceptanceCriteria: Array.isArray(obj.acceptanceCriteria)
-            ? obj.acceptanceCriteria
-            : ['Address review comments'],
-          createdAt: new Date().toISOString()
-        }
+      const text = await genChangeLLM(provider, spec, reason)
+      const jsonMatch = text.match(/```json\n([\s\S]*?)\n```/) || text.match(/\{[\s\S]*\}/)
+      if (jsonMatch) {
+        const jsonText = jsonMatch[1] ? jsonMatch[1] : jsonMatch[0]
+        try {
+          const obj = JSON.parse(jsonText)
+          if (obj && typeof obj.title === 'string' && typeof obj.summary === 'string') {
+            return {
+              id: obj.id || 'rec-' + Math.random().toString(36).slice(2, 8),
+              title: obj.title,
+              summary: obj.summary,
+              acceptanceCriteria: Array.isArray(obj.acceptanceCriteria)
+                ? obj.acceptanceCriteria
+                : ['Address review comments'],
+              createdAt: new Date().toISOString()
+            }
+          }
+        } catch {}
       }
-    } catch {
-      // fallthrough to deterministic fallback below
-    }
-  }
+    } catch {}
+  } catch {}
 
-  // If we couldn't parse or validate JSON, emit a diagnostic summary in the
-  // title/summary while falling back to the deterministic generator.
   const fallback = genChange(spec, reason)
   fallback.summary = `LLM output could not be parsed as JSON. Fallback: ${fallback.summary}`
   return fallback

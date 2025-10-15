@@ -13,6 +13,14 @@ import statusCmd from './commands/status'
 const program = new Command()
 program.name('agent-orchestrator').description('Spec-driven coding-agent orchestrator CLI').version('0.1.0')
 
+// Ensure per-project config is present on any CLI invocation
+;(async () => {
+  try {
+    const { ensureProjectConfig } = await import('../config')
+    await ensureProjectConfig(process.cwd())
+  } catch {}
+})()
+
 program.addCommand(initCmd)
 program.addCommand(runCmd)
 program.addCommand(approveCmd)

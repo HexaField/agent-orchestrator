@@ -42,7 +42,14 @@ export async function writeChangelog(cwd: string, task: string, content: string)
       }
     }
   } catch {}
-  const header = `---\nformat: agent-orchestrator-v1\ntask: ${task}\nrun: ${process.env.AO_RUN_ID ?? ''}\ncreatedAt: ${new Date().toISOString()}\n---\n\n`
+  // use RUN_ID from project config when present
+  let runIdHeader = ''
+  try {
+    const { readProjectConfig } = await import('../config')
+    const cfg = await readProjectConfig(process.cwd())
+    if (cfg && (cfg as any).RUN_ID) runIdHeader = (cfg as any).RUN_ID
+  } catch {}
+  const header = `---\nformat: agent-orchestrator-v1\ntask: ${task}\nrun: ${runIdHeader}\ncreatedAt: ${new Date().toISOString()}\n---\n\n`
   await writeFileAtomic(p, `${header}${content}${verification}\n`)
   return rel
 }

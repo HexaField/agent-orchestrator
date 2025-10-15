@@ -2,6 +2,7 @@ import fs from 'fs-extra'
 import path from 'path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { runOnce } from '../../src/core/orchestrator'
+import { seedConfigFor } from '../support/seedConfig'
 
 describe('run inputs recorded', () => {
   const tmp = path.join(__dirname, '.tmp-inputs')
@@ -15,7 +16,7 @@ describe('run inputs recorded', () => {
   })
 
   it('records checklist, contextPrompts, responseType and llmPrompt in run.json', async () => {
-    process.env.AO_SKIP_VERIFY = '1'
+  await seedConfigFor(tmp, { SKIP_VERIFY: '1' })
     const res = await runOnce(tmp, { llm: 'passthrough', agent: 'custom', prompt: 'implement spec', force: true })
     expect(res).toHaveProperty('runId')
     const runPath = path.join(tmp, '.agent', 'runs', res.runId, 'run.json')

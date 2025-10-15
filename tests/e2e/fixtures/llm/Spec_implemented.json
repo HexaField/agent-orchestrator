@@ -1,0 +1,6 @@
+{
+  "id": "stub-spec-1",
+  "object": "response",
+  "model": "stub-model",
+  "choices": [{ "text": "Spec implemented\nAll requirements met. Tests passed.", "index": 0, "finish_reason": "stop" }]
+}

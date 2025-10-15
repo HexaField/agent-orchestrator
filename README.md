@@ -38,14 +38,14 @@ Prerequisites:
 Example environment variables (local vllm or Ollama + Codex CLI):
 
 ```bash
-# If using the local vllm adapter the CLI expects AO_LLM_PROVIDER=vllm and
+# If using the local vllm adapter the CLI expects LLM_PROVIDER=vllm and
 # VLLM_SERVER_URL to point at your local vllm endpoint (example: http://localhost:8080)
-export AO_LLM_PROVIDER="vllm"
+export LLM_PROVIDER="vllm"
 export VLLM_SERVER_URL="http://localhost:8080"
 
-# If using Ollama locally set AO_LLM_PROVIDER=ollama and point OLLAMA_SERVER_URL
+# If using Ollama locally set LLM_PROVIDER=ollama and point OLLAMA_SERVER_URL
 # (or OLLAMA_API_BASE) at your Ollama HTTP endpoint (example: http://localhost:11434)
-export AO_LLM_PROVIDER="ollama"
+export LLM_PROVIDER="ollama"
 export OLLAMA_SERVER_URL="http://localhost:11434"
 
 # For the Codex agent (codex-cli adapter) configure the OpenAI API key or
@@ -64,7 +64,7 @@ npx agent-orchestrator run --cwd . --agent codex-cli --llm vllm --prompt "Implem
 Execute (real changes): enable command execution only when you trust the environment and adapters.
 
 ```bash
-AO_ALLOW_COMMANDS=1 npx agent-orchestrator run --cwd . --agent codex-cli --llm vllm --prompt "Implement the user login feature"
+ALLOW_COMMANDS=1 npx agent-orchestrator run --cwd . --agent codex-cli --llm vllm --prompt "Implement the user login feature"
 ```
 
 4. Check the orchestrator status and inspect run artifacts
@@ -87,12 +87,12 @@ Adapters and configuration -- LLM adapters: `vllm`, `openai-compatible`, `openai
 
 - Agent adapters: `http`, `copilot-cli`, `codex-cli`, `custom`
 
-Set `AO_LLM_PROVIDER`, `AGENT`, or use CLI flags `--llm` and `--agent` to select adapters. For the HTTP agent set `AGENT_HTTP_ENDPOINT` to your agent server URL.
+-Set `LLM_PROVIDER`, `AGENT`, or use CLI flags `--llm` and `--agent` to select adapters. For the HTTP agent set `AGENT_HTTP_ENDPOINT` to your agent server URL.
 
 Safety & test hooks
 
-- `AO_ALLOW_COMMANDS` — must be set to `1` for the orchestrator to execute shell commands produced by agents (disabled by default).
-- `AO_DRY_RUN` — simulate command execution (no side-effects).
+- `ALLOW_COMMANDS` — must be set to `1` for the orchestrator to execute shell commands produced by agents (disabled by default).
+- `DRY_RUN` — simulate command execution (no side-effects).
 - `MOCK_RUN_COMMAND` — internal test hook (JSON) used by tests to simulate `runCommand` responses.
 
 More details For a deep dive into architecture, adapters, marker formats, `.rej` handling, and operational guidance, see `architecture.md`.

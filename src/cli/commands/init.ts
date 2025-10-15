@@ -1,6 +1,7 @@
 import { Command } from 'commander'
 import { promises as fs } from 'fs'
 import path from 'path'
+import { ensureProjectConfig } from '../../config'
 import { setState } from '../../core/orchestrator'
 import { genChecklist } from '../../core/templates'
 import { ensureDir } from '../../io/fs'
@@ -34,6 +35,13 @@ const init = new Command('init')
       lastOutcome: 'none',
       nextTask: null
     } as any)
+
+    // Ensure project config is created/seeded
+    try {
+      await ensureProjectConfig(cwd)
+    } catch {
+      // non-fatal: if config can't be written, continue with defaults
+    }
 
     // audit log file
     await fs.appendFile(path.join(agentDir, 'audit.log'), '', 'utf8')

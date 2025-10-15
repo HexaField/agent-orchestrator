@@ -1,5 +1,8 @@
+import fs from 'fs-extra'
+import path from 'path'
 import { describe, expect, it } from 'vitest'
 import { genChange, genClarify, genContext, genNext, genResponseType } from '../../src/core/templates'
+import { seedConfigFor } from '../support/seedConfig'
 
 describe('templates', () => {
   it('genChange returns NextTask shape', () => {
@@ -18,12 +21,22 @@ describe('templates', () => {
     expect(Array.isArray(n.acceptanceCriteria)).toBe(true)
   })
 
-  it('genResponseType respects AO_RESPONSE_TYPE env var', () => {
-    process.env.AO_RESPONSE_TYPE = 'patches'
-    expect(genResponseType()).toBe('patches')
-    process.env.AO_RESPONSE_TYPE = 'files'
-    expect(genResponseType()).toBe('files')
-    delete process.env.AO_RESPONSE_TYPE
+  it('genResponseType respects AO_RESPONSE_TYPE in project config', async () => {
+    const tmp = path.join(__dirname, '.tmp-templates')
+    await fs.remove(tmp)
+    await fs.ensureDir(tmp)
+    await fs.ensureDir(path.join(tmp, '.agent'))
+    await seedConfigFor(tmp, { RESPONSE_TYPE: 'patches' })
+    const origCwd = process.cwd()
+    try {
+      process.chdir(tmp)
+      expect(genResponseType()).toBe('patches')
+      await seedConfigFor(tmp, { RESPONSE_TYPE: 'files' })
+      expect(genResponseType()).toBe('files')
+    } finally {
+      process.chdir(origCwd)
+      await fs.remove(tmp)
+    }
   })
 
   it('generators use spec text to produce richer outputs', () => {

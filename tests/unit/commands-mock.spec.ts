@@ -1,6 +1,7 @@
 import fs from 'fs-extra'
 import path from 'path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { seedConfigFor } from '../support/seedConfig'
 
 // Provide a top-level mock for child_process.exec so dynamic imports inside
 // the orchestrator pick up the mocked function during tests.
@@ -18,7 +19,6 @@ describe('responseType commands (mocked)', () => {
   afterEach(async () => {
     vi.restoreAllMocks()
     await fs.remove(tmp)
-    delete process.env.AO_ALLOW_COMMANDS
   })
 
   it('does not run commands when AO_ALLOW_COMMANDS!=1 and mocks exec when enabled', async () => {
@@ -30,7 +30,7 @@ describe('responseType commands (mocked)', () => {
     expect(await fs.pathExists(path.join(tmp, 'cmd.txt'))).toBe(false)
 
     // Now mock child_process.exec and enable commands
-    process.env.AO_ALLOW_COMMANDS = '1'
+  await seedConfigFor(tmp, { ALLOW_COMMANDS: '1' })
 
     const touch2 = `node -e \"require('fs').writeFileSync('cmd2.txt','ok')\"`
     // re-import runOnce (dynamic import inside test ensures orchestrator will dynamic-import our mocked module)

@@ -1,0 +1,6 @@
+{
+  "id": "stub-impl-1",
+  "object": "response",
+  "model": "stub-model",
+  "choices": [{ "text": "Implement the spec.\nSpec implemented", "index": 0, "finish_reason": "stop" }]
+}

@@ -19,7 +19,13 @@ const commit = new Command('commit')
     const rel = await writeChangelog(cwd, opts.branch ?? 'task', 'Automated changelog')
     // Attempt a simple commit if in a git repo
     try {
-      if (!(process.env.VITEST || process.env.VITEST_WORKER_ID || process.env.AO_DRY_RUN)) {
+      let dryRun = false
+      try {
+        const { readProjectConfig } = await import('../../config')
+        const cfg = await readProjectConfig(cwd)
+        dryRun = Boolean(cfg && (cfg as any).AO_DRY_RUN)
+      } catch {}
+      if (!(process.env.VITEST || process.env.VITEST_WORKER_ID || dryRun)) {
         await execa('git', ['add', '-A'], { cwd })
         const branch = opts.branch ?? `agent/${Date.now()}`
         await execa('git', ['checkout', '-b', branch], { cwd, reject: false })
@@ -37,7 +43,19 @@ const commit = new Command('commit')
 
     if (opts.pr) {
       // In test environments or when AO_DRY_RUN is set, skip actual PR creation
-      if (process.env.VITEST || process.env.VITEST_WORKER_ID || process.env.AO_DRY_RUN) {
+      if (
+        process.env.VITEST ||
+        process.env.VITEST_WORKER_ID ||
+        (await (async () => {
+          try {
+            const { readProjectConfig } = await import('../../config')
+            const cfg = await readProjectConfig(process.cwd())
+            return Boolean(cfg && (cfg as any).AO_DRY_RUN)
+          } catch {
+            return false
+          }
+        })())
+      ) {
         process.stdout.write('pr: skipped (dry-run/test mode)\n')
         return
       }

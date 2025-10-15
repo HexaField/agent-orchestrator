@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import clarifyCmd from '../../src/cli/commands/clarify'
 import { getState, runOnce } from '../../src/core/orchestrator'
 import { readProgress } from '../../src/core/progress'
+import { seedConfigFor } from '../support/seedConfig'
 
 describe('clarification flow', () => {
   const tmp = path.join(__dirname, '.tmp-clarify')
@@ -17,7 +18,7 @@ describe('clarification flow', () => {
   })
 
   it('run writes clarifications when agent requests them', async () => {
-    process.env.AO_SKIP_VERIFY = '1'
+  await seedConfigFor(tmp, { SKIP_VERIFY: '1' })
     // Use a prompt that triggers the custom agent to return 'Needs Clarification'
     const res = await runOnce(tmp, {
       llm: 'passthrough',

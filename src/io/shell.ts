@@ -1,4 +1,5 @@
 import { execa } from 'execa'
+import { readProjectConfig } from '../config'
 
 const REDACT_KEYS = ['TOKEN', 'KEY', 'SECRET', 'PASSWORD']
 
@@ -21,18 +22,30 @@ export async function runCommand(
   args: string[],
   opts: { cwd: string; timeoutMs?: number; env?: Record<string, string> }
 ) {
-  const env = Object.assign({}, process.env, opts.env || {}) as Record<string, string | undefined>
+  const mergedEnv = Object.assign({}, process.env, opts.env || {}) as Record<string, string | undefined>
 
   // Safety: default to disallow running commands in CI unless explicitly enabled
-  const isCI = Boolean(env['CI'] || env['GITHUB_ACTIONS'] || env['CI_SERVER'])
-  // AO_ALLOW_COMMANDS must be explicitly set to '1' to allow command execution
-  const allow = String(env['AO_ALLOW_COMMANDS'] || '').trim() === '1'
-  const dryRun = String(env['AO_DRY_RUN'] || '').trim() === '1'
+  const isCI = Boolean(mergedEnv['CI'] || mergedEnv['GITHUB_ACTIONS'] || mergedEnv['CI_SERVER'])
+  // ALLOW_COMMANDS and DRY_RUN are project-level configuration. Prefer
+  // values from .agent/config.json when present; fall back to opts.env only.
+  // Start with explicit per-invocation env values when provided
+  let allow = String(opts.env?.ALLOW_COMMANDS ?? '').trim() === '1'
+  let dryRun = String(opts.env?.DRY_RUN ?? '').trim() === '1'
+  try {
+    const cfg = await readProjectConfig(opts.cwd)
+    if (cfg) {
+      // Prefer an explicit input.env override; otherwise use the project config values
+      allow = String(opts.env?.ALLOW_COMMANDS ?? (cfg as any).ALLOW_COMMANDS ?? '').trim() === '1'
+      dryRun = String(opts.env?.DRY_RUN ?? (cfg as any).DRY_RUN ?? '').trim() === '1'
+    }
+  } catch {}
 
   // Test hook: if MOCK_RUN_COMMAND is present, return its JSON-parsed value (stringified)
-  if (env['MOCK_RUN_COMMAND']) {
+  // Test hook: if MOCK_RUN_COMMAND is present in either merged env or opts.env, return its JSON-parsed value
+  const mockCmd = opts.env?.MOCK_RUN_COMMAND || mergedEnv['MOCK_RUN_COMMAND']
+  if (mockCmd) {
     try {
-      const js = JSON.parse(env['MOCK_RUN_COMMAND'])
+      const js = JSON.parse(mockCmd)
       return { stdout: String(js.stdout ?? ''), stderr: String(js.stderr ?? ''), exitCode: Number(js.exitCode ?? 0) }
     } catch {}
   }

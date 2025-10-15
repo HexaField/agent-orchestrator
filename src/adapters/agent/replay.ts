@@ -7,7 +7,17 @@ export function createReplayAgent(): AgentAdapter {
     name: 'agent-replay',
     async run(input) {
       // Allow tests to select which fixture via AO_REPLAY_FIXTURE env or default to the bundled one
-      let fixture = (input.env && input.env.AO_REPLAY_FIXTURE) || process.env.AO_REPLAY_FIXTURE || 'WORK-1760471752835'
+      // Prefer explicit input.env override, otherwise read the project config fixture
+  // prefer explicit per-invocation env override (REPLAY_FIXTURE), then project config, then default
+  let fixture = String(input.env?.REPLAY_FIXTURE ?? '')
+      try {
+        const { readProjectConfig } = await import('../../config')
+        const cfg = await readProjectConfig(input.cwd || '.')
+        if (cfg) {
+          if (!fixture) fixture = String((cfg as any).REPLAY_FIXTURE ?? '')
+        }
+      } catch {}
+      if (!fixture) fixture = 'WORK-1760471752835'
 
       // Determine how many runs are already present in this workdir so we can
       // pick the next sequenced fixture (run-1.json, run-2.json, ...).

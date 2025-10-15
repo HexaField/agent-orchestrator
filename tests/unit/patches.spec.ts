@@ -2,6 +2,7 @@ import fs from 'fs-extra'
 import path from 'path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { runOnce } from '../../src/core/orchestrator'
+import { seedConfigFor } from '../support/seedConfig'
 
 describe('patches output handling', () => {
   const tmp = path.join(__dirname, '.tmp-patches-handling')
@@ -18,8 +19,7 @@ describe('patches output handling', () => {
   })
 
   it('writes patches.diff when responseType=patches and agent emits PATCH:', async () => {
-    process.env.AO_RESPONSE_TYPE = 'patches'
-    process.env.AO_SKIP_VERIFY = '1'
+  await seedConfigFor(tmp, { RESPONSE_TYPE: 'patches', SKIP_VERIFY: '1' })
     const prompt = 'PATCH:\ndiff --git a/file b/file\n+hello'
     const res = await runOnce(tmp, { llm: 'passthrough', agent: 'custom', prompt, force: true })
     expect(res).toHaveProperty('runId')
@@ -28,6 +28,6 @@ describe('patches output handling', () => {
     expect(has).toBe(true)
     const content = await fs.readFile(patchPath, 'utf8')
     expect(content).toContain('diff --git')
-    delete process.env.AO_RESPONSE_TYPE
+    // cleanup happens in afterEach
   })
 })

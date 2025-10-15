@@ -1,13 +1,28 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import fs from 'fs-extra'
+import path from 'path'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import * as gc from '../../src/core/generatorClient'
 import { genChangeAsync } from '../../src/core/templates'
+import { seedConfigFor } from '../support/seedConfig'
 
 // Monkey-patch the callLLM pathway by stubbing genChangeLLM to return controlled outputs.
 
 describe('genChangeAsync (LLM-backed)', () => {
-  beforeEach(() => {
-    process.env.AO_USE_LLM_GEN = '1'
-    process.env.AO_LLM_PROVIDER = 'passthrough'
+  const tmp = path.join(__dirname, '.tmp-genchange')
+  beforeEach(async () => {
+    await fs.remove(tmp)
+    await fs.ensureDir(tmp)
+    await fs.ensureDir(path.join(tmp, '.agent'))
+  await seedConfigFor(tmp, { USE_LLM_GEN: '1', LLM_PROVIDER: 'passthrough' })
+    // change cwd for template call which uses process.cwd() when reading .agent
+    process.chdir(tmp)
+  })
+  afterEach(async () => {
+    try {
+      // restore cwd to repo root for subsequent tests
+      process.chdir(path.resolve(__dirname, '..', '..'))
+    } catch {}
+    await fs.remove(tmp)
   })
 
   it('parses valid JSON returned by LLM', async () => {

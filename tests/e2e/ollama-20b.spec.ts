@@ -4,6 +4,8 @@ import { cpSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'fs'
 import net from 'net'
 import path from 'path'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
+import { startStub } from '../support/llmStub'
+import { seedConfigFor } from '../support/seedConfig'
 
 function sleep(ms: number) {
   return new Promise((r) => setTimeout(r, ms))
@@ -45,19 +47,15 @@ function buildEnv(extra: Record<string, string> = {}) {
     if (v != null) baseEnv[k] = String(v)
   }
   Object.assign(baseEnv, {
-    AO_LLM_PROVIDER: 'openai-compatible',
+    // Keep non-AO env vars that other tooling expects. AO_* flags are seeded via seedConfigFor.
     LLM_PROVIDER: 'openai-compatible',
-    AO_LLM_MODEL: 'gpt-oss:20b',
-    AO_LLM_ENDPOINT: OLLAMA_ENDPOINT,
     LLM_ENDPOINT: OLLAMA_ENDPOINT,
     LLM_MODEL: 'gpt-oss:20b',
     // Default to the replay agent for fast deterministic E2E runs. Tests can
-    // override by passing extra.AGENT when calling buildEnv/prepareExecEnv.
-    AO_AGENT: extra?.AGENT || 'agent-replay',
+    // override by seeding AO_REPLAY_FIXTURE or AGENT via seedConfigFor.
     AGENT: extra?.AGENT || 'agent-replay',
     CODEX_API_BASE: OLLAMA_ENDPOINT,
     OPENAI_API_BASE: OLLAMA_ENDPOINT,
-    AO_DEBUG_CODEX: '1',
     // ensure quick timeouts for tests
     AO_LLM_TIMEOUT_MS: '60000',
     ...extra
@@ -113,7 +111,7 @@ base_url = "${OLLAMA_ENDPOINT}"
   }
 
   // Use the real system PATH; override HOME so the codex CLI reads the test config from fake home.
-  const base = buildEnv(Object.assign({}, extra, { HOME: fakeHome, AO_ALLOW_COMMANDS: '1' }))
+  const base = buildEnv(Object.assign({}, extra, { HOME: fakeHome }))
   base.HOME = fakeHome
   return base
 }
@@ -168,16 +166,29 @@ describe('E2E Ollama gpt-oss:20b (openai-compatible) suite', () => {
   let skippable = false
 
   beforeAll(async () => {
-    // connectivity precheck
-    const ok = await isPortOpen(OLLAMA_HOST, OLLAMA_PORT, 1000)
-    if (!ok) {
-      skippable = true
+    // Try to start a local LLM stub for the e2e suite. If the real Ollama
+    // endpoint is reachable, we still prefer the stub to keep tests hermetic.
+    try {
+      const stub = await startStub()
+      // override the endpoint for the suite to use the stub
+      ;(global as any).__AO_E2E_STUB = stub
       return
+  } catch {
+      // if we can't start a stub, fall back to checking for a local Ollama
+      const ok = await isPortOpen(OLLAMA_HOST, OLLAMA_PORT, 1000)
+      if (!ok) skippable = true
     }
   })
 
   afterAll(() => {
-    // no-op here; each scenario cleans up on success
+    // stop the LLM stub if we started one
+    const stub: any = (global as any).__AO_E2E_STUB
+    if (stub && typeof stub.stop === 'function') {
+      // stop may be async; don't await in afterAll sync callback
+      try {
+        void stub.stop()
+      } catch {}
+    }
   })
 
   it('connectivity check to Ollama', async () => {
@@ -207,6 +218,16 @@ describe('E2E Ollama gpt-oss:20b (openai-compatible) suite', () => {
         path.join(tmp, 'package.json'),
         JSON.stringify({ name: 'ao-e2e', version: '0.0.0', scripts: { test: 'echo OK' } }, null, 2)
       )
+
+      // seed project config so runtime reads .agent/config.json instead of AO_* env fallbacks
+      const stub: any = (global as any).__AO_E2E_STUB
+      const stubUrl = stub ? stub.url : OLLAMA_ENDPOINT
+      await seedConfigFor(tmp, {
+        LLM_PROVIDER: 'openai-compatible',
+        LLM_MODEL: 'gpt-oss:20b',
+        LLM_ENDPOINT: stubUrl,
+        AGENT: 'agent-replay'
+      })
 
       // run init
       await execa('node', [cli, 'init', '--cwd', tmp], { env: prepareExecEnv(tmp) })
@@ -321,25 +342,31 @@ describe('E2E Ollama gpt-oss:20b (openai-compatible) suite', () => {
       await execa('mkdir', ['-p', tmp])
       cpSync(path.join(__dirname, '..', 'fixtures', 'simple-spec', 'spec.md'), path.join(tmp, 'spec.md'))
       await execa('git', ['init'], { cwd: tmp })
+      await seedConfigFor(tmp, {
+        LLM_PROVIDER: 'openai-compatible',
+        LLM_ENDPOINT: OLLAMA_ENDPOINT,
+        AGENT: 'agent-replay'
+      })
       await execa('node', [cli, 'init', '--cwd', tmp], { env: prepareExecEnv(tmp) })
 
-      await execa(
-        'node',
-        [
-          cli,
-          'run',
-          '--cwd',
-          tmp,
-          '--non-interactive',
-          '--agent',
-          'custom',
-          '--llm',
-          'passthrough',
-          '--prompt',
-          'Needs Clarification'
-        ],
-        { env: prepareExecEnv(tmp, { AO_REPLAY_FIXTURE: 'WORK-awaiting_review' }) }
-      )
+      await execa('node', [
+        cli,
+        'run',
+        '--cwd',
+        tmp,
+        '--non-interactive',
+        '--agent',
+        'custom',
+        '--llm',
+        'passthrough',
+        '--prompt',
+        'Needs Clarification'
+      ])
+      await seedConfigFor(tmp, { AO_REPLAY_FIXTURE: 'WORK-awaiting_review' })
+      await execa('node', [cli, 'run', '--cwd', tmp, '--non-interactive'], {
+        env: prepareExecEnv(tmp),
+        timeout: 120000
+      })
       let state = JSON.parse(readFileSync(path.join(tmp, '.agent', 'state.json'), 'utf8'))
       expect(statusIncludes(state, ['needs_clarification'])).toBe(true)
 
@@ -352,8 +379,9 @@ describe('E2E Ollama gpt-oss:20b (openai-compatible) suite', () => {
 
       // re-run until awaiting_review
       for (let i = 0; i < 3; i++) {
+        await seedConfigFor(tmp, { AO_REPLAY_FIXTURE: 'WORK-awaiting_review' })
         await execa('node', [cli, 'run', '--cwd', tmp, '--non-interactive'], {
-          env: prepareExecEnv(tmp, { AO_REPLAY_FIXTURE: 'WORK-awaiting_review' }),
+          env: prepareExecEnv(tmp),
           timeout: 120000
         })
         await applyLatestAgentPatchIfAny(tmp)
@@ -377,12 +405,18 @@ describe('E2E Ollama gpt-oss:20b (openai-compatible) suite', () => {
       await execa('mkdir', ['-p', tmp])
       cpSync(fixtureSpec, path.join(tmp, 'spec.md'))
       await execa('git', ['init'], { cwd: tmp })
+      await seedConfigFor(tmp, {
+        LLM_PROVIDER: 'openai-compatible',
+        LLM_ENDPOINT: OLLAMA_ENDPOINT,
+        AGENT: 'agent-replay'
+      })
       await execa('node', [cli, 'init', '--cwd', tmp], { env: prepareExecEnv(tmp) })
 
       // run to awaiting_review
       for (let i = 0; i < 4; i++) {
+        await seedConfigFor(tmp, { AO_REPLAY_FIXTURE: 'WORK-changes_requested' })
         await execa('node', [cli, 'run', '--cwd', tmp, '--non-interactive'], {
-          env: prepareExecEnv(tmp, { AO_REPLAY_FIXTURE: 'WORK-changes_requested' }),
+          env: prepareExecEnv(tmp),
           timeout: 120000
         })
         await applyLatestAgentPatchIfAny(tmp)
@@ -399,8 +433,9 @@ describe('E2E Ollama gpt-oss:20b (openai-compatible) suite', () => {
       )
 
       // run should produce changes requested state until we add test
+      await seedConfigFor(tmp, { AO_REPLAY_FIXTURE: 'WORK-changes_requested' })
       await execa('node', [cli, 'run', '--cwd', tmp, '--non-interactive'], {
-        env: prepareExecEnv(tmp, { AO_REPLAY_FIXTURE: 'WORK-changes_requested' }),
+        env: prepareExecEnv(tmp),
         timeout: 120000
       })
       let state = JSON.parse(readFileSync(path.join(tmp, '.agent', 'state.json'), 'utf8'))
@@ -415,7 +450,7 @@ describe('E2E Ollama gpt-oss:20b (openai-compatible) suite', () => {
       // run again and expect awaiting_review/ready_to_commit
       for (let i = 0; i < 3; i++) {
         await execa('node', [cli, 'run', '--cwd', tmp, '--non-interactive'], {
-          env: prepareExecEnv(tmp, { AO_REPLAY_FIXTURE: 'WORK-changes_requested' }),
+          env: prepareExecEnv(tmp),
           timeout: 120000
         })
         state = JSON.parse(readFileSync(path.join(tmp, '.agent', 'state.json'), 'utf8'))
@@ -448,6 +483,11 @@ describe('E2E Ollama gpt-oss:20b (openai-compatible) suite', () => {
       await execa('mkdir', ['-p', tmp])
       cpSync(fixtureSpec, path.join(tmp, 'spec.md'))
       await execa('git', ['init'], { cwd: tmp })
+      await seedConfigFor(tmp, {
+        LLM_PROVIDER: 'openai-compatible',
+        LLM_ENDPOINT: OLLAMA_ENDPOINT,
+        AGENT: 'agent-replay'
+      })
       await execa('node', [cli, 'init', '--cwd', tmp], { env: prepareExecEnv(tmp) })
 
       // create a file that agent will edit, then create a conflicting commit
@@ -461,8 +501,9 @@ describe('E2E Ollama gpt-oss:20b (openai-compatible) suite', () => {
       await execa('git', ['commit', '-am', 'local change'], { cwd: tmp })
 
       // run to make agent attempt a change that will conflict
+      await seedConfigFor(tmp, { AO_REPLAY_FIXTURE: 'WORK-merge_conflict' })
       await execa('node', [cli, 'run', '--cwd', tmp, '--non-interactive'], {
-        env: prepareExecEnv(tmp, { AO_REPLAY_FIXTURE: 'WORK-merge_conflict' }),
+        env: prepareExecEnv(tmp),
         timeout: 120000
       })
 
@@ -474,8 +515,9 @@ describe('E2E Ollama gpt-oss:20b (openai-compatible) suite', () => {
         expect(rejFiles.length).toBeGreaterThan(0)
       }
       // it's acceptable if the adapter recorded a rejection; ensure next run recovers
+      await seedConfigFor(tmp, { AO_REPLAY_FIXTURE: 'WORK-merge_conflict' })
       await execa('node', [cli, 'run', '--cwd', tmp, '--non-interactive'], {
-        env: prepareExecEnv(tmp, { AO_REPLAY_FIXTURE: 'WORK-merge_conflict' }),
+        env: prepareExecEnv(tmp),
         timeout: 120000
       })
       const state = JSON.parse(readFileSync(path.join(tmp, '.agent', 'state.json'), 'utf8'))

@@ -2,6 +2,7 @@ import fs from 'fs-extra'
 import path from 'path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { runOnce, setState } from '../../src/core/orchestrator'
+import { seedConfigFor } from '../support/seedConfig'
 
 describe('recommendations are used in run inputs', () => {
   const tmp = path.join(__dirname, '.tmp-recommend')
@@ -25,7 +26,7 @@ describe('recommendations are used in run inputs', () => {
         createdAt: new Date().toISOString()
       }
     } as any)
-    process.env.AO_SKIP_VERIFY = '1'
+  await seedConfigFor(tmp, { SKIP_VERIFY: '1' })
     const res = await runOnce(tmp, { llm: 'passthrough', agent: 'custom', prompt: 'implement', force: true })
     expect(res.inputs).toBeDefined()
     expect(Array.isArray(res.inputs.contextPrompts)).toBe(true)

@@ -25,7 +25,14 @@ describe('automated review heuristics', () => {
   })
 
   it('falls back to heuristic when LLM review is enabled but passthrough returns inconclusive text', async () => {
-    process.env.AO_USE_LLM_REVIEW = '1'
+    const fs = await import('fs-extra')
+    const path = await import('path')
+    const { seedConfigFor } = await import('../support/seedConfig')
+    const tmp = path.join(__dirname, '.tmp-review-autoreview')
+    await fs.remove(tmp)
+    await fs.ensureDir(tmp)
+    await fs.ensureDir(path.join(tmp, '.agent'))
+  await seedConfigFor(tmp, { USE_LLM_REVIEW: '1', LLM_PROVIDER: 'passthrough' })
     // monkey patch getLLMAdapter to return a neutral LLM that does not echo the prompt
     vi.spyOn(llmIndex, 'getLLMAdapter').mockImplementation(
       () =>
@@ -36,9 +43,15 @@ describe('automated review heuristics', () => {
           }
         }) as any
     )
-    const diff = `diff --git a/README.md b/README.md\n+++ b/README.md\n-Old\n+New\n`
-    const res = await reviewCodeAsync(diff)
-    expect(res.status).toBe('approved')
-    process.env.AO_USE_LLM_REVIEW = undefined
+    const origCwd = process.cwd()
+    try {
+      process.chdir(tmp)
+      const diff = `diff --git a/README.md b/README.md\n+++ b/README.md\n-Old\n+New\n`
+      const res = await reviewCodeAsync(diff)
+      expect(res.status).toBe('approved')
+    } finally {
+      process.chdir(origCwd)
+      await fs.remove(tmp)
+    }
   })
 })

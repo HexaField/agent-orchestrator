@@ -16,7 +16,13 @@ const review = new Command('review')
       // synthesize recommended changes and write to progress.md and state
       try {
         let rec
-        if (process.env.AO_USE_LLM_GEN === '1') {
+        let useLLM = false
+        try {
+          const { readProjectConfig } = await import('../../config')
+          const cfg = await readProjectConfig(cwd)
+          if (cfg && (cfg as any).USE_LLM_GEN) useLLM = true
+        } catch {}
+        if (useLLM) {
           const { genChangeAsync } = await import('../../core/templates')
           rec = await genChangeAsync(undefined, 'review')
         } else {

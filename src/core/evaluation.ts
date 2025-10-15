@@ -1,4 +1,5 @@
 import { getLLMAdapter } from '../adapters/llm'
+import { readProjectConfig } from '../config'
 import type { OrchestratorStatus, WhatDone } from '../types/models'
 
 export function routeWhatDone(what: WhatDone): OrchestratorStatus {
@@ -108,10 +109,30 @@ function ruleBasedWhatDone(text: string): WhatDone {
  * short explanation. We tolerate free-form outputs by mapping known words.
  */
 export async function whatDoneFromTextAsync(text: string): Promise<WhatDone> {
-  if (process.env.AO_USE_LLM_EVAL !== '1') return ruleBasedWhatDone(text)
+  // prefer project config flag; do not use AO_* environment fallback
+  let useLLM = false
+  try {
+    const cfg = await readProjectConfig(process.cwd())
+    if (cfg && (cfg as any).USE_LLM_EVAL) useLLM = true
+  } catch {}
+
+  if (!useLLM) return ruleBasedWhatDone(text)
 
   try {
-    const llm = getLLMAdapter(process.env.AO_LLM_PROVIDER || 'passthrough', {})
+    // prefer project config for provider/endpoint/model
+    let provider = 'passthrough'
+    let endpoint: string | undefined = undefined
+    let model: string | undefined = undefined
+    try {
+      const cfg = await readProjectConfig(process.cwd())
+      if (cfg) {
+        provider = (cfg as any).LLM_PROVIDER || (cfg.LLM_PROVIDER as string) || provider
+        endpoint = cfg.LLM_ENDPOINT
+        model = cfg.LLM_MODEL
+      }
+    } catch {}
+
+    const llm = getLLMAdapter(provider, { endpoint, model })
     const prompt = `Classify the following agent run output into one of: spec_implemented, completed_task, needs_clarification, failed. Respond with only the label.\n\nOutput:\n${text}`
     const out = await llm.generate({ prompt, temperature: 0 })
     const t = (out.text || '').toLowerCase()
@@ -131,10 +152,6 @@ export async function whatDoneFromTextAsync(text: string): Promise<WhatDone> {
 // Backwards compatible synchronous function that uses async evaluator if
 // AO_USE_LLM_EVAL is not enabled.
 export function whatDoneFromText(text: string): WhatDone {
-  // If async LLM eval is requested but caller used sync API, fall back to rules
-  if (process.env.AO_USE_LLM_EVAL === '1') {
-    // best-effort: call rule-based and note that LLM could be more accurate
-    return ruleBasedWhatDone(text)
-  }
+  // Synchronous wrapper: always use rule-based for sync path
   return ruleBasedWhatDone(text)
 }

@@ -2,6 +2,7 @@ import { promises as fs } from 'fs'
 import path from 'path'
 import { getAgentAdapter } from '../adapters/agent/index'
 import { getLLMAdapter } from '../adapters/llm/index'
+import { ensureProjectConfig } from '../config'
 import { ensureDir, readJsonSafe, writeFileAtomic, writeJsonAtomic } from '../io/fs'
 import type { StateJsonV1, WhatDone } from '../types/models'
 import { runVerification } from '../validation/verify'
@@ -73,11 +74,20 @@ export async function runOnce(
     await setState(cwd, { currentRunId: runId, status: 'running' } as any)
     const startedAt = new Date().toISOString()
 
-    const llm = getLLMAdapter(opts.llm, {
-      endpoint: opts.endpoint,
-      model: opts.model
+    // Load per-project config (seeding .agent/config.json if missing)
+    const projectCfg = await ensureProjectConfig(cwd)
+
+    const llmName = opts.llm || projectCfg.LLM_PROVIDER || 'passthrough'
+    const model = opts.model || projectCfg.LLM_MODEL
+    const endpoint = opts.endpoint || projectCfg.LLM_ENDPOINT
+
+    const llm = getLLMAdapter(llmName, {
+      endpoint,
+      model
     })
-    const agent = getAgentAdapter(opts.agent)
+
+    const agentName = opts.agent || projectCfg.AGENT || 'codex-cli'
+    const agent = getAgentAdapter(agentName)
 
     // Build structured inputs for the run
     let specText = ''
@@ -165,9 +175,11 @@ export async function runOnce(
     if (responseType === 'commands' || responseType === 'mixed') {
       const out = (agentRes.stdout || '').trim()
       if (out) {
-        // Guard: only execute commands when explicitly enabled
-        if (process.env.AO_ALLOW_COMMANDS === '1') {
-          try {
+        // Guard: only execute commands when explicitly enabled via project config
+        try {
+          const { readProjectConfig, ensureProjectConfig } = await import('../config')
+          const cfg = (await readProjectConfig(cwd)) || (await ensureProjectConfig(cwd))
+          if (cfg && (cfg as any).ALLOW_COMMANDS) {
             const { exec } = await import('child_process')
             // NOTE: for safety we run commands synchronously and capture output
             await new Promise<void>((resolve, reject) => {
@@ -178,15 +190,17 @@ export async function runOnce(
                 resolve()
               })
             })
-          } catch {
-            // failed to run commands; don't throw from orchestrator
           }
+        } catch {
+          // failed to run commands or commands not allowed; don't throw from orchestrator
         }
       }
     }
 
     const what = whatDoneFromText(agentRes.stdout + '\n' + agentRes.stderr)
-    const verification = await runVerification()
+  // Run verification, which itself will inspect the project config and
+  // honor SKIP_VERIFY when present.
+    const verification = await runVerification(cwd)
 
     const endedAt = new Date().toISOString()
     // capture git diffs (name-only and truncated full diff)

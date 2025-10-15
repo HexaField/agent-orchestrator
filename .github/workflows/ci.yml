@@ -37,10 +37,8 @@ jobs:
 
       - name: Unit and Contract Tests
         run: npm test
-        env:
-          AO_SKIP_VERIFY: '1'
+        # no SKIP_VERIFY set here; tests should seed project config as needed
 
       - name: E2E Tests
         run: npm run e2e
-        env:
-          AO_SKIP_VERIFY: '1'
+        # no SKIP_VERIFY set here; e2e should manage project config and stubs explicitly

@@ -1,7 +1,19 @@
 import { getLLMAdapter } from '../adapters/llm'
+import { readProjectConfig } from '../config'
 
 export async function callLLM(provider: string, prompt: string) {
-  const llm = getLLMAdapter(provider, { endpoint: process.env.LLM_ENDPOINT, model: process.env.LLM_MODEL })
+  // Prefer per-project config for endpoint and model
+  let endpoint: string | undefined = undefined
+  let model: string | undefined = undefined
+  try {
+    const cfg = await readProjectConfig(process.cwd())
+    if (cfg) {
+      endpoint = cfg.LLM_ENDPOINT
+      model = cfg.LLM_MODEL
+    }
+  } catch {}
+
+  const llm = getLLMAdapter(provider, { endpoint, model })
   const out = await llm.generate({ prompt, temperature: 0 })
   return out.text || ''
 }

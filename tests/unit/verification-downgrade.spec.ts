@@ -1,9 +1,10 @@
 import fs from 'fs-extra'
 import path from 'path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { seedConfigFor } from '../support/seedConfig'
 // we'll import runOnce dynamically after stubbing runVerification
 
-// We'll stub runVerification by setting AO_SKIP_VERIFY=undefined and
+// We'll stub runVerification by setting SKIP_VERIFY=undefined and
 // mocking the imported runVerification at runtime isn't trivial without changing code.
 // Instead, we'll rely on the runOnce logic: when whatDone is 'spec_implemented' it
 // checks verification object. To simulate a failing verification, we'll monkeypatch
@@ -19,7 +20,6 @@ describe('orchestrator verification downgrade', () => {
     await fs.writeFile(path.join(tmp, 'spec.md'), '# Spec\n\nDo X', 'utf8')
   })
   afterEach(async () => {
-    delete process.env.AO_SKIP_VERIFY
     await fs.remove(tmp)
   })
 
@@ -28,7 +28,7 @@ describe('orchestrator verification downgrade', () => {
     // when prompt includes 'spec implemented' - easier approach: call runOnce with custom
     // agent that returns stdout indicating spec_implemented. The adapters in tests are
     // simple; here we rely on the 'custom' adapter implementation in repo to behave.
-    process.env.AO_SKIP_VERIFY = ''
+  await seedConfigFor(tmp, { SKIP_VERIFY: '' })
     // To simulate failing verification, write a stub validation/verify.ts that returns failing results.
     const verifyPath = path.join(__dirname, '..', '..', 'src', 'validation', 'verify.ts')
     await fs.ensureDir(path.dirname(verifyPath))

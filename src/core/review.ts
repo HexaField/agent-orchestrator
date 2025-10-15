@@ -1,4 +1,5 @@
 import { getLLMAdapter } from '../adapters/llm'
+import { readProjectConfig } from '../config'
 
 export type ReviewStatus = 'pending' | 'approved' | 'changes_requested'
 
@@ -56,11 +57,28 @@ function heuristicReview(diff: string): ReviewResult {
 }
 
 export async function reviewCodeAsync(diff: string): Promise<ReviewResult> {
-  // Optional LLM-assisted review (opt-in)
-  if (process.env.AO_USE_LLM_REVIEW === '1') {
+  // Optional LLM-assisted review (opt-in). Prefer project config when present.
+  let useLLM = false
+  try {
+    const cfg = await readProjectConfig(process.cwd())
+    if (cfg && (cfg as any).USE_LLM_REVIEW) useLLM = true
+  } catch {}
+
+  if (useLLM) {
     try {
-      const provider = process.env.AO_LLM_PROVIDER || 'passthrough'
-      const llm = getLLMAdapter(provider, { endpoint: process.env.AO_LLM_ENDPOINT, model: process.env.AO_LLM_MODEL })
+      let provider = 'passthrough'
+      let endpoint: string | undefined = undefined
+      let model: string | undefined = undefined
+      try {
+        const cfg = await readProjectConfig(process.cwd())
+        if (cfg) {
+          provider = (cfg as any).LLM_PROVIDER || provider
+          endpoint = cfg.LLM_ENDPOINT
+          model = cfg.LLM_MODEL
+        }
+      } catch {}
+
+      const llm = getLLMAdapter(provider, { endpoint, model })
       const prompt = `Review the following git diff and respond with one of: approved, changes_requested, pending. Provide a short reason.\n\nDiff:\n${diff}`
       const out = await llm.generate({ prompt, temperature: 0 })
       const txt = (out.text || '').toLowerCase()
@@ -81,7 +99,13 @@ export async function reviewCodeAsync(diff: string): Promise<ReviewResult> {
 // Backwards-compatible sync wrapper for existing callers that expect a sync function.
 export function reviewCode(diff: string): ReviewResult {
   // If async LLM review is enabled, prefer async path but fall back to heuristics
-  if (process.env.AO_USE_LLM_REVIEW === '1') {
+  let useLLM = false
+  try {
+    const cfg = readProjectConfig(process.cwd())
+    if (cfg && (cfg as any).USE_LLM_REVIEW) useLLM = true
+  } catch {}
+
+  if (useLLM) {
     // best-effort: call heuristic and leave hint that LLM review is available
     const h = heuristicReview(diff)
     if (h.status === 'approved') h.notes = h.notes + ' (LLM-review available if enabled)'
