@@ -16,5 +16,6 @@
     "baseUrl": ".",
     "paths": {}
   },
-  "include": ["src", "tests", "bin"]
+  "include": ["src", "tests", "bin"],
+  "exclude": [".e2e"]
 }

@@ -42,6 +42,18 @@ const run = new Command('run')
         // ignore failures to apply patches
       }
     }
+    // After runOnce, if clarifications are needed, synthesize and post them automatically
+    try {
+      const { getState } = await import('../../core/orchestrator')
+      const st = await getState(cwd)
+      if (st && st.lastOutcome === 'needs_clarification') {
+        const { clarifyLastRun } = await import('../../core/clarifier')
+        // approve so clarifications are treated like human-approved ones
+        await clarifyLastRun(cwd, { approve: true })
+      }
+    } catch {
+      // ignore failures in the automated clarifier
+    }
   })
 
 export default run

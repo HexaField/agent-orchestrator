@@ -1,5 +1,11 @@
-Upon completing a task, ALWAYS update ./project.md to check off the changes made.
+Our MVP is a tool that takes a spec.md file, breaks it down into tasks in a progress.md file, and then invokes a coding agent to implement the tasks, clarifying and updating the spec as it goes along, automatically steering it to completion according to the spec and progress.
 
-This is an active prototype - there is no need or migration or legacy support.
+We use TDD to drive the implementation of the code, and the agent is expected to write and run tests as part of its process. Never include test specific code in the implementation of the tool.
+
+This is an active prototype - there is no need or stubs, migration or legacy support.
 
 NEVER create stubs or placeholders.
+
+Include jsdoc annotations for all functions and methods.
+
+Always implement with a declarative, functional programming style.

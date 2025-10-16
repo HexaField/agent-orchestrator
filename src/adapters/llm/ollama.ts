@@ -34,12 +34,15 @@ export function createOllama(opts: { endpoint?: string; model?: string }): LLMAd
 
       // Ollama's internal `/api/generate` often streams NDJSON chunks.
       // Attempt to parse streaming NDJSON and assemble the final text.
-      const contentType = res.headers.get('content-type') || ''
+      const headersGet =
+        (res.headers && (res.headers as any).get) ||
+        ((k: string) => (res.headers ? (res.headers as any)[k] : undefined))
+      const contentType = (headersGet('content-type') || '') as string
 
       if (
-        contentType.includes('application/x-ndjson') ||
-        contentType.includes('application/ndjson') ||
-        res.headers.get('transfer-encoding') === 'chunked'
+        String(contentType).includes('application/x-ndjson') ||
+        String(contentType).includes('application/ndjson') ||
+        String(headersGet('transfer-encoding')) === 'chunked'
       ) {
         const reader = (res.body as any).getReader()
         const decoder = new TextDecoder('utf-8')

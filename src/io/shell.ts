@@ -44,17 +44,6 @@ export async function runCommand(
     }
   } catch {}
 
-  // Test hook: if MOCK_RUN_COMMAND is present, return its JSON-parsed value (stringified)
-  // Test hook: if MOCK_RUN_COMMAND is present in either merged env or opts.env, return its JSON-parsed value
-  // Test hook: MOCK_RUN_COMMAND may be passed via opts.env; fall back to process.env
-  const mockCmd = opts.env?.MOCK_RUN_COMMAND || process.env['MOCK_RUN_COMMAND'] || mergedEnv['MOCK_RUN_COMMAND']
-  if (mockCmd) {
-    try {
-      const js = JSON.parse(mockCmd)
-      return { stdout: String(js.stdout ?? ''), stderr: String(js.stderr ?? ''), exitCode: Number(js.exitCode ?? 0) }
-    } catch {}
-  }
-
   // Test override: force allowing commands in test environments when requested.
   // This is useful in e2e harnesses where an external CI flag or sandboxing
   // falsely causes child runs to be treated as read-only. Set FORCE_ALLOW_COMMANDS=1
@@ -83,10 +72,56 @@ export async function runCommand(
     env: opts.env,
     reject: false
   })
+  // Always pipe child stdout/stderr to parent process for live inspection
+  // while still collecting the output in memory to return to callers.
+  let stdoutBuf = ''
+  let stderrBuf = ''
+
+  if (cp.stdout) {
+    try {
+      cp.stdout.setEncoding('utf8')
+    } catch {}
+    cp.stdout.on('data', (chunk: any) => {
+      const s = String(chunk)
+      console.log(s)
+      stdoutBuf += s
+      try {
+        process.stdout.write(s)
+      } catch {}
+      try {
+        // Also emit to console.error with a short prefix so test runners like
+        // Vitest (which capture console output) will include the streamed
+        // LLM output in test logs for easier inspection.
+        for (const line of s.split(/\r?\n/)) {
+          if (!line) continue
+          console.error(`[child stdout] ${line}`)
+        }
+      } catch {}
+    })
+  }
+  if (cp.stderr) {
+    try {
+      cp.stderr.setEncoding('utf8')
+    } catch {}
+    cp.stderr.on('data', (chunk: any) => {
+      const s = String(chunk)
+      stderrBuf += s
+      try {
+        process.stderr.write(s)
+      } catch {}
+      try {
+        for (const line of s.split(/\r?\n/)) {
+          if (!line) continue
+          console.error(`[child stderr] ${line}`)
+        }
+      } catch {}
+    })
+  }
+
   const res = await cp
   return {
-    stdout: res.stdout ?? '',
-    stderr: res.stderr ?? '',
+    stdout: stdoutBuf || res.stdout || '',
+    stderr: stderrBuf || res.stderr || '',
     exitCode: res.exitCode ?? 0
   }
 }

@@ -93,7 +93,6 @@ Safety & test hooks
 
 - `ALLOW_COMMANDS` — must be set to `1` for the orchestrator to execute shell commands produced by agents (disabled by default).
 - `DRY_RUN` — simulate command execution (no side-effects).
-- `MOCK_RUN_COMMAND` — internal test hook (JSON) used by tests to simulate `runCommand` responses.
 
 More details For a deep dive into architecture, adapters, marker formats, `.rej` handling, and operational guidance, see `architecture.md`.
 

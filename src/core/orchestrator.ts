@@ -201,6 +201,58 @@ export async function runOnce(
       }
     }
 
+    // If the initial agent run indicates 'needs_clarification' attempt an
+    // automated clarify-and-retry loop at the orchestrator level. This runs
+    // unconditionally (no env gate). Bounded by AUTO_CLARIFY_ATTEMPTS
+    // (default 2) to avoid unbounded retries. Each automated attempt will
+    // generate clarifications (via genClarifyAsync) and re-run the agent
+    // with a prompt that includes those clarifications plus an explicit
+    // instruction to assume reasonable defaults and proceed without asking
+    // further questions. The concatenated stdout/stderr from all attempts
+    // is preserved so diagnostic artifacts contain the full trace.
+
+    const maxAttempts = Number(process.env.AUTO_CLARIFY_ATTEMPTS || '2') || 2
+    let attempt = 0
+    // loop until agent no longer requests clarification or we exhaust attempts
+    while (attempt < maxAttempts) {
+      const currentWhat = whatDoneFromText((agentRes.stdout || '') + '\n' + (agentRes.stderr || ''))
+      if (currentWhat !== 'needs_clarification') break
+      try {
+        const { genClarifyAsync } = await import('./templates')
+        const clar = await genClarifyAsync(specText, cwd)
+        // Add a small deterministic assumptions paragraph to proactively
+        // answer the most common clarifying questions (filenames, tests,
+        // package.json updates). This helps avoid back-and-forth where the
+        // model asks simple questions that can be safely assumed.
+        const assumptions = [
+          'Place implementation files under src/, e.g. src/cli/ for CLIs.',
+          'Place unit tests under tests/unit/ following existing repo conventions.',
+          'If a CLI entrypoint is required, add a simple npm script in package.json to run it.',
+          'If filenames are unspecified, choose reasonable, idiomatic paths that match the spec.'
+        ].join(' ')
+
+        const autoPrompt =
+          initialAgentPrompt +
+          '\n\nClarifications (automated):\n' +
+          clar +
+          '\n\nAutomated assumptions: ' +
+          assumptions +
+          '\n\nAnswer the clarifications briefly and then implement the spec. If any details are ambiguous, prefer the automated assumptions above and proceed. Do NOT ask further clarification questions. Emit your changes as either a unified git diff, fenced code blocks (```), or a single NDJSON line with { "aggregated_output": ... } so the orchestrator can extract files.'
+        const newRes = await agent.run({ prompt: autoPrompt, cwd })
+        // preserve prior outputs and append the automated attempt for diagnostics
+        agentRes.stdout =
+          (agentRes.stdout || '') + '\n\n--- AUTO-CLARIFY ATTEMPT ' + (attempt + 1) + ' ---\n' + (newRes.stdout || '')
+        agentRes.stderr = (agentRes.stderr || '') + '\n\n' + (newRes.stderr || '')
+      } catch {
+        // If any error occurs while generating clarifications or re-running
+        // the agent, stop the auto-clarify attempts and proceed with the
+        // original agent result. We do not want to fail the orchestrator
+        // because of the auto-clarify helper.
+        break
+      }
+      attempt++
+    }
+
     const what = whatDoneFromText(agentRes.stdout + '\n' + agentRes.stderr)
     // Run verification. Prefer the already-loaded projectCfg to decide
     // whether verification should be skipped (avoids any timing/visibility

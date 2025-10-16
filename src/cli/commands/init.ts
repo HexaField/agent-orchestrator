@@ -29,6 +29,8 @@ const init = new Command('init')
     const progressContent = `# Progress\n\n## Context\n\n\n## Clarifications\n\n\n## Checklist\n\n<!-- CHECKLIST:BEGIN -->\n${checklist.map((i) => `- [ ] ${i}`).join('\n')}\n<!-- CHECKLIST:END -->\n\n## Decisions\n\n\n## Status\n\ninitialized\n\n## Next Task\n\n`
     await fs.writeFile(progressPath, progressContent, 'utf8')
 
+    console.log(`Initialized .agent/ and progress.md in ${cwd}`)
+
     await setState(cwd, {
       version: 1,
       currentRunId: null,
@@ -53,6 +55,8 @@ const init = new Command('init')
     } catch {
       // ignore template seed failures
     }
+
+    console.log('Created default config and seeded templates in .agent/')
   })
 
 export default init
