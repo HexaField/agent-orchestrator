@@ -6,6 +6,8 @@ This is an active prototype - there is no need or stubs, migration or legacy sup
 
 NEVER create stubs or placeholders.
 
+When told to remove something, always remove it completely and do not leave any references to it, even in comments.
+
 Include jsdoc annotations for all functions and methods.
 
 Always implement with a declarative, functional programming style.

@@ -58,9 +58,7 @@ Preview (safe): shows what would happen without executing shell commands. Use th
 npx agent-orchestrator run --cwd . --agent codex-cli --llm vllm --prompt "Implement the user login feature"
 ```
 
-Execute (real changes): enable command execution only when you trust the project configuration and adapters.
-
-Set `ALLOW_COMMANDS` in `.agent/config.json` to `true` or pass an explicit `--allow-commands` flag if available in the CLI wrapper. The CLI will refuse to execute commands unless project configuration explicitly allows it.
+Execute (real changes): the orchestrator will execute shell commands produced by agents. Tests and environments should ensure the workspace is writable and the agent adapter is trustworthy before running.
 
 4. Check the orchestrator status and inspect run artifacts
 
@@ -92,8 +90,7 @@ Adapters and configuration -- LLM adapters: `vllm`, `passthrough`, `ollama`
 
 Safety & test hooks
 
-- `ALLOW_COMMANDS` — must be set to `1` for the orchestrator to execute shell commands produced by agents (disabled by default).
-- `DRY_RUN` — simulate command execution (no side-effects).
+- `DRY_RUN` — simulate command execution (no side-effects). Use replay fixtures for deterministic testing of agent outputs.
 
 More details For a deep dive into architecture, adapters, marker formats, `.rej` handling, and operational guidance, see `architecture.md`.
 

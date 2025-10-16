@@ -6,7 +6,6 @@ export async function seedConfigFor(tmpDir: string, partial: Record<string, any>
     LLM_MODEL: 'gpt-oss:20b',
     LLM_ENDPOINT: 'http://localhost:11434/v1',
     AGENT: 'agent-replay',
-    ALLOW_COMMANDS: undefined,
     USE_LLM_GEN: undefined,
     USE_LLM_REVIEW: undefined,
     USE_LLM_EVAL: undefined,

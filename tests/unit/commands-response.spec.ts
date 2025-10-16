@@ -3,7 +3,6 @@ import path from 'path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { runOnce } from '../../src/core/orchestrator'
 import { seedEmptyProgress } from '../support/createProgress'
-import { seedConfigFor } from '../support/seedConfig'
 
 describe('responseType commands', () => {
   const tmp = path.join(__dirname, '.tmp-cmds')
@@ -18,8 +17,7 @@ describe('responseType commands', () => {
     await fs.remove(tmp)
   })
 
-  it('runs commands when ALLOW_COMMANDS=1', async () => {
-    await seedConfigFor(tmp, { ALLOW_COMMANDS: '1' })
+  it('runs commands (unconditional)', async () => {
     // use a harmless echo command; custom agent will echo prompt
     const cmd = 'echo hello-from-agent'
     await runOnce(tmp, { llm: 'passthrough', agent: 'custom', prompt: cmd })

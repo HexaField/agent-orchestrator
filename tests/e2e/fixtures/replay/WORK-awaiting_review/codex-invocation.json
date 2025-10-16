@@ -16,7 +16,6 @@
   "env": {
     "LLM_ENDPOINT": "http://localhost:11434/v1",
     "DEBUG_CODEX": "1",
-    "ALLOW_COMMANDS": "1",
     "PATH": "<REPO_ROOT>/node_modules/.bin:/usr/local/bin:/usr/bin:/bin",
     "HOME": "<E2E_HOME>",
     "model": "gpt-oss:20b"

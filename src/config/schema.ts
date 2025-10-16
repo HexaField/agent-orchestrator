@@ -15,7 +15,6 @@ export const ConfigSchema = z.object({
   // Optional/legacy
   CODEX_API_BASE: z.string().url().optional(),
   // Project-only optional flags
-  ALLOW_COMMANDS: z.boolean().optional(),
   USE_LLM_GEN: z.boolean().optional(),
   RESPONSE_TYPE: z.enum(['patches', 'files', 'commands', 'mixed']).optional(),
   SKIP_VERIFY: z.boolean().optional()

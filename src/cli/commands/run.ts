@@ -14,6 +14,7 @@ const run = new Command('run')
   .option('--apply-patches', 'Apply patches emitted by the agent when responseType=patches', false)
   .action(async (opts) => {
     const cwd = path.resolve(process.cwd(), opts.cwd ?? '.')
+    console.log(`Running agent in ${cwd}`)
     const cfg = await getEffectiveConfig(cwd)
     await runOnce(cwd, {
       llm: opts.llm ?? cfg.LLM_PROVIDER,

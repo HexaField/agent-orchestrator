@@ -49,60 +49,19 @@ export function createCodexCli(): AgentAdapter {
         preArgs.push('--profile', 'gpt-oss-20b-ollama')
       }
 
-      // If the harness allows commands, ensure the codex CLI is invoked with a
-      // writable sandbox and an approval policy that permits unattended runs
-      // in test environments.
-      try {
-        let allowCommands = String(input.env?.ALLOW_COMMANDS ?? '')
-        try {
-          const { getEffectiveConfig } = await import('../../config')
-          const cfg = await getEffectiveConfig(input.cwd || '.')
-          if (allowCommands.trim() === '') allowCommands = String(cfg.ALLOW_COMMANDS ?? '')
-        } catch {}
-        if (allowCommands.trim() === '1') {
-          // Add sandbox write and approval flags as global options (must come
-          // before the 'exec' subcommand). Use -a never to avoid interactive
-          // approvals in CI-like test runs and set an override to allow
-          // network access from the workspace write sandbox.
-          preArgs.push('-s', 'workspace-write')
-          preArgs.push('-a', 'never')
-          preArgs.push('-c', 'sandbox_workspace_write.network_access=true')
-        }
-      } catch {}
+      // Always allow the codex CLI to be invoked; sandbox/approval flags are
+      // not injected here. Tests that require a writable sandbox should set
+      // up the environment or the external codex CLI profile accordingly.
 
-      // If the harness allows commands, make it explicit in the prompt so
-      // models that receive a read-only session context can act with write
-      // permission when running tests with the real `codex` CLI.
+      // Keep the prompt focused on implementation and append the spec if present.
       let finalPrompt = input.prompt || ''
       try {
-        // prefer explicit per-invocation env, otherwise fall back to project config
-        let allowCommands = String(input.env?.ALLOW_COMMANDS ?? '')
-        try {
-          const { getEffectiveConfig } = await import('../../config')
-          const cfg = await getEffectiveConfig(input.cwd || '.')
-          if (allowCommands.trim() === '') allowCommands = String(cfg.ALLOW_COMMANDS ?? '')
-        } catch {}
-        if (allowCommands.trim() === '1' && finalPrompt) {
-          // Keep the system instruction concise and natural-language.
-          const prefix =
-            'SYSTEM: You may create and modify files in the repository. Read the attached spec and implement the requested changes using idiomatic TypeScript. If any details are ambiguous, make reasonable assumptions and proceed.'
-
-          let promptBody = finalPrompt || ''
-          try {
-            const specPath = path.join(input.cwd || '.', 'spec.md')
-            if (fs.existsSync(specPath)) {
-              const specText = fs.readFileSync(specPath, 'utf8')
-              promptBody = promptBody + '\n\n' + specText
-            }
-          } catch {}
-
-          // Do not require special marker formats; prefer the agent to write files
-          // directly into the workspace. Keep the prompt focused on implementation.
-          finalPrompt = prefix + '\n\n' + promptBody
+        const specPath = path.join(input.cwd || '.', 'spec.md')
+        if (fs.existsSync(specPath)) {
+          const specText = fs.readFileSync(specPath, 'utf8')
+          finalPrompt = finalPrompt ? finalPrompt + '\n\n' + specText : specText
         }
-      } catch {
-        // ignore any issues determining allow flag
-      }
+      } catch {}
       if (finalPrompt) args.push(finalPrompt)
 
       // Respect a VLLM or custom OpenAI-compatible base URL if provided.
@@ -147,22 +106,18 @@ export function createCodexCli(): AgentAdapter {
         try {
           fs.mkdirSync(outDir, { recursive: true })
         } catch {}
-        // compute debug and allow flags from input.env or project config
-        // derive debug and allow flags: prefer input.env then project config
+        // compute debug flags from input.env or project config
         let debugCodeX = String(input.env?.DEBUG_CODEX ?? '')
-        let allowFlag = String(input.env?.ALLOW_COMMANDS ?? '')
         try {
           const { getEffectiveConfig } = await import('../../config')
           const cfg = await getEffectiveConfig(input.cwd || '.')
           if (debugCodeX.trim() === '') debugCodeX = String((cfg as any).DEBUG_CODEX ?? '')
-          if (allowFlag.trim() === '') allowFlag = String(cfg.ALLOW_COMMANDS ?? '')
         } catch {}
         const dump = {
           args: [...preArgs, ...args],
           env: {
             LLM_ENDPOINT: env.LLM_ENDPOINT,
             DEBUG_CODEX: debugCodeX || undefined,
-            ALLOW_COMMANDS: allowFlag || undefined,
             // Do not leak host process.env PATH/HOME; tests should set these in input.env when needed
             PATH: env.PATH || undefined,
             HOME: env.HOME || undefined,
@@ -189,6 +144,8 @@ export function createCodexCli(): AgentAdapter {
       const cliArgsBase = [...preArgs, ...args]
       for (let attempt = 1; attempt <= Math.max(1, maxAttempts); attempt++) {
         const finalArgs = [...cliArgsBase]
+        console.log(`codex-cli: attempt ${attempt} of ${maxAttempts}...`)
+        console.log(finalArgs)
 
         // write per-attempt invocation diagnostics
         try {

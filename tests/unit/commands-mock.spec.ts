@@ -2,7 +2,6 @@ import fs from 'fs-extra'
 import path from 'path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { seedEmptyProgress } from '../support/createProgress'
-import { seedConfigFor } from '../support/seedConfig'
 
 // Provide a top-level mock for child_process.exec so dynamic imports inside
 // the orchestrator pick up the mocked function during tests.
@@ -23,24 +22,15 @@ describe('responseType commands (mocked)', () => {
     await fs.remove(tmp)
   })
 
-  it('does not run commands when ALLOW_COMMANDS!=1 and mocks exec when enabled', async () => {
-    // First, ensure commands are not executed when gate is off
+  it('runs commands (exec mocked) and records invocation', async () => {
+    // Commands execute unconditionally; ensure runOnce invokes the exec path
     const touch = `node -e "require('fs').writeFileSync('cmd.txt','no')"`
     // import runOnce dynamically to avoid interfering with vi.mock later
-    const { runOnce } = await import('../../src/core/orchestrator')
+    const mod = (await import('../../src/core/orchestrator')) as any
+    const runOnce = mod.runOnce as any
     await runOnce(tmp, { llm: 'passthrough', agent: 'custom', prompt: touch })
-    expect(await fs.pathExists(path.join(tmp, 'cmd.txt'))).toBe(false)
-
-    // Now mock child_process.exec and enable commands
-    await seedConfigFor(tmp, { ALLOW_COMMANDS: '1' })
-
-    const touch2 = `node -e \"require('fs').writeFileSync('cmd2.txt','ok')\"`
-    // re-import runOnce (dynamic import inside test ensures orchestrator will dynamic-import our mocked module)
-    const { runOnce: runOnce2 } = await import('../../src/core/orchestrator')
-    await runOnce2(tmp, { llm: 'passthrough', agent: 'custom', prompt: touch2 })
 
     // Because exec was mocked at module level, the file should not actually be created, but exec should have been called
     expect(execMock).toHaveBeenCalled()
-    expect(await fs.pathExists(path.join(tmp, 'cmd2.txt'))).toBe(false)
   })
 })

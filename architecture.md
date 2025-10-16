@@ -97,7 +97,6 @@ Key points:
 
 - The LLM call is optional: the orchestrator can be driven by a provided prompt or generated one.
 - Agent adapters encapsulate different ways to run an agent; e.g., `agent-replay` is used by tests to simulate runs by copying fixture runs into `.agent/runs`.
-- Execution of shell commands by agents is gated by configuration (`ALLOW_COMMANDS`) and the `runCommand` helper implements dry-run/CI safeguards.
 
 ## Data model and storage
 
@@ -128,5 +127,5 @@ Key points:
 
 - Concurrency control: `withLock(cwd, fn)` is used by orchestrator to prevent concurrent runs (locks.ts).
 - Human gating: if state is `awaiting_approval`, runs are blocked unless `--force` is passed.
-- Command execution safety: `runCommand` only executes real commands when `ALLOW_COMMANDS=1` and not running in CI; otherwise returns DRY-RUN outputs.
+- Command execution safety: `runCommand` executes commands directly. For safe test runs use replay fixtures or isolated writable temp workspaces.
 - Robustness: many adapters and templates have fallbacks to deterministic behavior when environment or remote services are unavailable (e.g., passthrough LLM, generator fallbacks).
