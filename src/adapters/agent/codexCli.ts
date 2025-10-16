@@ -1,4 +1,5 @@
 import fs from 'fs'
+import os from 'os'
 import path from 'path'
 // ...config helpers are dynamically imported where needed
 import { runCommand } from '../../io/shell'
@@ -24,29 +25,88 @@ export function createCodexCli(): AgentAdapter {
         args.push('--model', model)
       }
 
-      // Codex reads configuration from ~/.codex/config.toml by default. We don't pass
-      // a config file path here because the CLI doesn't accept a `--config <path>` flag.
-      // Instead, tests should place the config in the fake HOME under ~/.codex/config.toml.
-
       // Run in non-interactive JSON mode where possible.
       args.push('--json')
-      // If an explicit LLM endpoint/base URL was provided, pass it as config overrides
-      // so the Codex CLI uses the intended OpenAI-compatible base (e.g., Ollama).
-      // Prefer project config over environment when available
+      // If an explicit LLM endpoint/base URL was provided, build codex --config
+      // overrides instead of relying on an external profile file. Prefer project
+      // config over environment when available.
       let cfgBase: string | undefined = undefined
+      let cfgProvider: string | undefined = undefined
       try {
         const { getEffectiveConfig } = await import('../../config')
         const cfg = await getEffectiveConfig(input.cwd || '.')
-        if (cfg) cfgBase = cfg.LLM_ENDPOINT
+        if (cfg) {
+          cfgBase = cfg.LLM_ENDPOINT
+          cfgProvider = cfg.LLM_PROVIDER
+        }
       } catch {}
-      // Use only the canonical LLM_ENDPOINT (no legacy fallbacks).
+      // canonical endpoint and provider
       const codeXBaseFinal = input.env?.LLM_ENDPOINT || cfgBase
+      const codeXProviderFinal = input.env?.LLM_PROVIDER || cfgProvider || 'ollama'
+      const configArgs: string[] = []
       if (codeXBaseFinal) {
-        // If a codex profile is present we prefer using --oss --profile <name>
-        // rather than inline -c overrides. The test harness creates a profile
-        // named 'gpt-oss-20b-ollama' that points to Ollama /v1.
-        preArgs.push('--oss')
-        preArgs.push('--profile', 'gpt-oss-20b-ollama')
+        // Build --config flags expected by the codex CLI to override provider and model
+        // Example: --config model_provider=ollama --config model_providers.ollama.base_url=http://127.0.0.1:11423/v1 --config model_providers.ollama.name="Ollama" --config model=gpt-oss:20b
+        // noop: we will compute finalModel below when needed
+
+        const provider = String(codeXProviderFinal)
+        const providerCap = provider.charAt(0).toUpperCase() + provider.slice(1)
+        configArgs.push('--config', `model_provider=${provider}`)
+        configArgs.push('--config', `model_providers.${provider}.base_url=${codeXBaseFinal}`)
+        configArgs.push('--config', `model_providers.${provider}.name="${providerCap}"`)
+        if (
+          model ||
+          (await (async () => {
+            try {
+              const { getEffectiveConfig } = await import('../../config')
+              const c = await getEffectiveConfig(input.cwd || '.')
+              return c?.LLM_MODEL
+            } catch {
+              return undefined
+            }
+          })())
+        ) {
+          const finalModel =
+            model ||
+            (await (async () => {
+              try {
+                const { getEffectiveConfig } = await import('../../config')
+                const c = await getEffectiveConfig(input.cwd || '.')
+                return c?.LLM_MODEL
+              } catch {
+                return undefined
+              }
+            })())
+          if (finalModel) configArgs.push('--config', `model=${finalModel}`)
+        }
+
+        // Ensure the codex profile exists in the system root ~/.codex/config.toml
+        try {
+          const ROOT = path.join(os.homedir())
+          const tomlDir = path.join(ROOT, '.codex')
+          try {
+            fs.mkdirSync(tomlDir, { recursive: true })
+          } catch {}
+          const tomlPath = path.join(tomlDir, 'config.toml')
+          try {
+            // Minimal profile section name to mirror the CLI example name used historically
+            const profileName = `gpt-oss-20b-${provider}`
+            let existing = ''
+            try {
+              try {
+                console.log('DEBUG: reading existing codex config at', tomlPath)
+                console.log(fs.readFileSync(tomlPath, 'utf8'))
+              } catch {}
+              if (fs.existsSync(tomlPath)) existing = fs.readFileSync(tomlPath, 'utf8')
+            } catch {}
+            if (!existing.includes(`[profiles.${profileName}]`)) {
+              const block = `\n[profiles.${profileName}]\nbase_url = "${codeXBaseFinal}"\nname = "${providerCap}"\n`
+              try {
+                fs.appendFileSync(tomlPath, block, 'utf8')
+              } catch {}
+            }
+          } catch {}
+        } catch {}
       }
 
       // Always allow the codex CLI to be invoked; sandbox/approval flags are
@@ -114,7 +174,7 @@ export function createCodexCli(): AgentAdapter {
           if (debugCodeX.trim() === '') debugCodeX = String((cfg as any).DEBUG_CODEX ?? '')
         } catch {}
         const dump = {
-          args: [...preArgs, ...args],
+          args: [...preArgs, ...configArgs, ...args],
           env: {
             LLM_ENDPOINT: env.LLM_ENDPOINT,
             DEBUG_CODEX: debugCodeX || undefined,
@@ -141,7 +201,9 @@ export function createCodexCli(): AgentAdapter {
       let lastRes: { stdout: string; stderr: string; exitCode: number } | null = null
 
       // Only apply the inner-loop retry behavior for the CLI path (preferred).
-      const cliArgsBase = [...preArgs, ...args]
+      // Prepend any config overrides we generated to the CLI args so they are passed
+      // as explicit --config flags to the codex CLI.
+      const cliArgsBase = [...preArgs, ...configArgs, ...args]
       for (let attempt = 1; attempt <= Math.max(1, maxAttempts); attempt++) {
         const finalArgs = [...cliArgsBase]
         console.log(`codex-cli: attempt ${attempt} of ${maxAttempts}...`)
