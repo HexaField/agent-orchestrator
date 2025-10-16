@@ -13,7 +13,7 @@
     "lint": "eslint . --ext .ts --max-warnings=20",
     "format:check": "prettier --check .",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "npm run build --silent && vitest run",
+    "test": "npm run build --silent && vitest run --exclude \"tests/e2e/**\"",
     "e2e:codex-ollama-large": "npm run build --silent && vitest run tests/e2e/codex-ollama-large-context.spec.ts --testTimeout=900000",
     "test:watch": "vitest",
     "e2e": "npm run build --silent && vitest run tests/e2e --testTimeout=900000",

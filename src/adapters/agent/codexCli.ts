@@ -20,10 +20,6 @@ export function createCodexCli(): AgentAdapter {
       const args: string[] = ['exec']
       // preArgs hold global options that must appear before the 'exec' subcommand
       const preArgs: string[] = []
-      if (model) {
-        // codex supports -m/--model
-        args.push('--model', model)
-      }
 
       // Run in non-interactive JSON mode where possible.
       args.push('--json')
