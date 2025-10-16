@@ -1,6 +1,7 @@
 import fs from 'fs-extra'
 import path from 'path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { seedEmptyProgress } from '../support/createProgress'
 import { seedConfigFor } from '../support/seedConfig'
 
 // Provide a top-level mock for child_process.exec so dynamic imports inside
@@ -15,6 +16,7 @@ describe('responseType commands (mocked)', () => {
     await fs.ensureDir(tmp)
     await fs.ensureDir(path.join(tmp, '.agent', 'runs'))
     await fs.writeFile(path.join(tmp, 'spec.md'), '# Spec')
+    await seedEmptyProgress(tmp)
   })
   afterEach(async () => {
     vi.restoreAllMocks()

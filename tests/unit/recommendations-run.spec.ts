@@ -2,6 +2,7 @@ import fs from 'fs-extra'
 import path from 'path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { runOnce, setState } from '../../src/core/orchestrator'
+import { seedEmptyProgress } from '../support/createProgress'
 import { seedConfigFor } from '../support/seedConfig'
 
 describe('recommendations are used in run inputs', () => {
@@ -10,6 +11,7 @@ describe('recommendations are used in run inputs', () => {
     await fs.remove(tmp)
     await fs.ensureDir(tmp)
     await fs.ensureDir(path.join(tmp, '.agent'))
+    await seedEmptyProgress(tmp)
   })
   afterEach(async () => {
     await fs.remove(tmp)

@@ -85,6 +85,28 @@ Words: 2
   // ensure status is not initialized or needs_clarification or awaiting_approval
   expect(/initialized|needs_clarification|awaiting_approval/i.test(prog.status || '')).toBe(false)
 
+  // verify run artifacts were recorded under .agent/runs/<runId>/
+  const runsDir = path.join(tmp, '.agent', 'runs')
+  expect(fs.existsSync(runsDir)).toBe(true)
+  const runs = fs.existsSync(runsDir)
+    ? fs.readdirSync(runsDir).filter((name) => fs.statSync(path.join(runsDir, name)).isDirectory())
+    : []
+  expect(runs.length).toBeGreaterThan(0)
+
+  // pick the most-recent run directory and assert run.json and patches.diff exist
+  const runDirs = runs.map((name) => path.join(runsDir, name))
+  runDirs.sort((a, b) => fs.statSync(b).mtimeMs - fs.statSync(a).mtimeMs)
+  const runPath = runDirs[0]
+  const runJsonPath = path.join(runPath, 'run.json')
+  expect(fs.existsSync(runJsonPath)).toBe(true)
+  const runJson = JSON.parse(fs.readFileSync(runJsonPath, 'utf8'))
+  // basic sanity: run.json should be an object and contain some metadata
+  expect(typeof runJson).toBe('object')
+  expect(runJson).not.toBeNull()
+
+  const patchesPath = path.join(runPath, 'patches.diff')
+  expect(fs.existsSync(patchesPath)).toBe(true)
+
   // Execute the generated CLI and assert acceptance criteria
   const binPath = path.join(tmp, 'bin', 'summarize.js')
   expect(fs.existsSync(binPath)).toBe(true)

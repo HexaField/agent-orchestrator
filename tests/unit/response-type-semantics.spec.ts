@@ -2,6 +2,7 @@ import fs from 'fs-extra'
 import path from 'path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { runOnce } from '../../src/core/orchestrator'
+import { seedEmptyProgress } from '../support/createProgress'
 
 describe('responseType semantics and marker edge cases', () => {
   const tmp = path.join(__dirname, '.tmp-response-semantics')
@@ -9,6 +10,7 @@ describe('responseType semantics and marker edge cases', () => {
     await fs.remove(tmp)
     await fs.ensureDir(tmp)
     await fs.ensureDir(path.join(tmp, '.agent', 'runs'))
+    await seedEmptyProgress(tmp)
     await fs.writeFile(path.join(tmp, 'spec.md'), '# Spec')
   })
   afterEach(async () => {

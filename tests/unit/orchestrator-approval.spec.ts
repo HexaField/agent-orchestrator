@@ -2,12 +2,14 @@ import fs from 'fs-extra'
 import path from 'path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { getState, runOnce, setState } from '../../src/core/orchestrator'
+import { seedEmptyProgress } from '../support/createProgress'
 
 describe('orchestrator approval gating', () => {
   const tmp = path.join(__dirname, '.tmp-approval')
   beforeEach(async () => {
     await fs.remove(tmp)
     await fs.ensureDir(tmp)
+    await seedEmptyProgress(tmp)
     // initialize .agent dir and state
     await fs.ensureDir(path.join(tmp, '.agent'))
   })
