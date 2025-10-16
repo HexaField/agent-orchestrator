@@ -34,9 +34,17 @@ export function createOllama(opts: { endpoint?: string; model?: string }): LLMAd
 
       // Ollama's internal `/api/generate` often streams NDJSON chunks.
       // Attempt to parse streaming NDJSON and assemble the final text.
-      const headersGet =
-        (res.headers && (res.headers as any).get) ||
-        ((k: string) => (res.headers ? (res.headers as any)[k] : undefined))
+      // bind headers.get safely to avoid 'Illegal invocation' when
+      // extracting header values from undici's Headers implementation
+      const headersGet = (k: string) => {
+        try {
+          return typeof (res.headers as any)?.get === 'function'
+            ? (res.headers as any).get.call(res.headers, k)
+            : (res.headers as any)?.[k]
+        } catch {
+          return (res.headers as any)?.[k]
+        }
+      }
       const contentType = (headersGet('content-type') || '') as string
 
       if (

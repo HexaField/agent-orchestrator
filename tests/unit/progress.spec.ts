@@ -5,8 +5,7 @@ import {
   applyProgressPatch,
   getStatus,
   readNextTaskAcceptanceCriteria,
-  readProgress,
-  writeSectionAtomic
+  readProgressJson
 } from '../../src/core/progress'
 
 describe('progress API', () => {
@@ -19,12 +18,12 @@ describe('progress API', () => {
     await fs.remove(tmp)
   })
 
-  it('writes and reads sections atomically', async () => {
-    await writeSectionAtomic(tmp, 'Status', 'idle')
+  it('writes and reads sections atomically (json)', async () => {
+    await applyProgressPatch(tmp, { status: 'idle' })
     expect(await getStatus(tmp)).toBe('idle')
-    await writeSectionAtomic(tmp, 'Clarifications', 'Please clarify X')
-    const p = await readProgress(tmp)
-    expect(p).toContain('Clarifications')
+    await applyProgressPatch(tmp, { clarifications: 'Please clarify X' })
+    const p = await readProgressJson(tmp)
+    expect(p.clarifications).toBe('Please clarify X')
   })
 
   it('applies nextTask and reads acceptance criteria', async () => {

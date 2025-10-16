@@ -1,3 +1,4 @@
+- [ ] turn progress file to structured JSON
 - [ ] completely remove env var configs
   - [ ] remove user facing configs
   - [ ] refactor test logic out of implementation

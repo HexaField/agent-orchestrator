@@ -4,7 +4,8 @@ A spec-driven orchestration CLI that coordinates LLMs and external agents to imp
 
 Key goals
 
-- Run repeatable agent-driven iterations: generate a change, apply it as a patch, run verification, and update `progress.md`.
+-- Run repeatable agent-driven iterations: generate a change, apply it as a patch, run verification, and update `progress.json`.
+
 - Keep detailed run artifacts and preserved rejections for auditability.
 - Provide safe defaults (dry-run and test hooks) so you can evaluate behavior before enabling real command execution.
 
@@ -71,7 +72,7 @@ npx agent-orchestrator list-rejections <runId> --cwd .  # list preserved .rej fi
 
 Commands
 
-- `init` — bootstrap `.agent/`, create `progress.md`, initialize state
+- `init` — bootstrap `.agent/`, create `progress.json`, initialize state
 - `run` — execute one orchestrated iteration (LLM → Agent → verify → patch apply)
 - `status` — print current status
 - `review` — record review actions (`--approve` / `--request-changes`)

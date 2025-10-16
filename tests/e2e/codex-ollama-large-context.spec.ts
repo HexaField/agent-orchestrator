@@ -5,7 +5,7 @@ import { expect, it } from 'vitest'
 
 const repoRoot = path.resolve(__dirname, '../../')
 
-it('completes progress.md autonomously from spec.md', async () => {
+it('completes progress.json autonomously from spec.md', async () => {
   const tmp = path.join(repoRoot, '.e2e', `E2E-${Date.now()}`)
   try {
     rmSync(tmp, { recursive: true, force: true })
@@ -69,47 +69,50 @@ Words: 2
 `
   fs.writeFileSync(path.join(tmp, 'spec.md'), prompt, 'utf8')
 
+  // allow long-running CLI actions during e2e (15 minutes)
+  const CLI_TIMEOUT = 15 * 60 * 1000
   // run init via npx to ensure local bin is used even if not linked
   const npxBin = path.join(repoRoot, 'bin', 'agent-orchestrator')
-  await execa('node', [npxBin, 'init', '--cwd', tmp])
+  await execa('node', [npxBin, 'init', '--cwd', tmp], { timeout: CLI_TIMEOUT })
 
   // run which will invoke runOnce and the automated clarifier we added
-  await execa('node', [npxBin, 'run', '--cwd', tmp], { timeout: 2 * 60 * 1000 })
+  await execa('node', [npxBin, 'run', '--cwd', tmp], { timeout: CLI_TIMEOUT })
 
-  // verify progress.md exists and status sections are marked completed
-  const progressPath = path.join(tmp, 'progress.md')
+  // verify progress.json exists and status sections are marked completed
+  const progressPath = path.join(tmp, 'progress.json')
   expect(fs.existsSync(progressPath)).toBe(true)
-  const prog = fs.readFileSync(progressPath, 'utf8')
-  // simple heuristic: ensure 'Status' section does not contain 'initialized' or 'needs_clarification'
-  expect(!/initialized|needs_clarification|awaiting_approval/i.test(prog)).toBe(true)
+  const prog = JSON.parse(fs.readFileSync(progressPath, 'utf8'))
+  // ensure status is not initialized or needs_clarification or awaiting_approval
+  expect(/initialized|needs_clarification|awaiting_approval/i.test(prog.status || '')).toBe(false)
 
   // Execute the generated CLI and assert acceptance criteria
   const binPath = path.join(tmp, 'bin', 'summarize.js')
   expect(fs.existsSync(binPath)).toBe(true)
 
   // --help exits 0
-  await execa('node', [binPath, '--help'], { cwd: tmp })
+  await execa('node', [binPath, '--help'], { cwd: tmp, timeout: CLI_TIMEOUT })
 
   // --version matches package.json
   const pkg = JSON.parse(fs.readFileSync(path.join(tmp, 'package.json'), 'utf8'))
-  const ver = await execa('node', [binPath, '--version'], { cwd: tmp })
+  const ver = await execa('node', [binPath, '--version'], { cwd: tmp, timeout: CLI_TIMEOUT })
   expect(ver.stdout.trim()).toBe(pkg.version)
 
   // stdin example
   const stdinRun = await execa('node', [binPath, '-'], {
     cwd: tmp,
-    input: 'Hello\nworld\n'
+    input: 'Hello\nworld\n',
+    timeout: CLI_TIMEOUT
   })
   expect(stdinRun.stdout.trim()).toBe(['Title: Hello', 'Lines: 2', 'Words: 2'].join('\n'))
 
   // missing file exits 1 with stderr
-  await expect(execa('node', [binPath, 'missing.txt'], { cwd: tmp })).rejects.toMatchObject({
+  await expect(execa('node', [binPath, 'missing.txt'], { cwd: tmp, timeout: CLI_TIMEOUT })).rejects.toMatchObject({
     exitCode: 1
   })
 
   // --max-bytes respected and still outputs three lines
   const samplePath = path.join(tmp, 'sample.txt')
   fs.writeFileSync(samplePath, 'Hello\nworld', 'utf8')
-  const limited = await execa('node', [binPath, samplePath, '--max-bytes', '5'], { cwd: tmp })
+  const limited = await execa('node', [binPath, samplePath, '--max-bytes', '5'], { cwd: tmp, timeout: CLI_TIMEOUT })
   expect(limited.stdout.trim()).toBe(['Title: Hello', 'Lines: 1', 'Words: 1'].join('\n'))
 })

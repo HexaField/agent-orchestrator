@@ -51,7 +51,7 @@ export function createCodexCli(): AgentAdapter {
 
       // If the harness allows commands, ensure the codex CLI is invoked with a
       // writable sandbox and an approval policy that permits unattended runs
-      // in test environments. This mirrors the manual invocation used in e2e.
+      // in test environments.
       try {
         let allowCommands = String(input.env?.ALLOW_COMMANDS ?? '')
         try {

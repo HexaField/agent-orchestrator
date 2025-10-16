@@ -14,7 +14,7 @@ export async function readTemplateFile(cwd: string, name: string): Promise<strin
     const txt = await fsp.readFile(p, 'utf8')
     return txt
   } catch {
-    // Diagnostic: log attempted path when missing (helpful in e2e debugging)
+    // Diagnostic: log attempted path when missing
     try {
       // eslint-disable-next-line no-console
       console.debug(`[templateLoader] readTemplateFile: missing ${p}; cwd=${cwd}; name=${name}`)
@@ -142,6 +142,11 @@ DEFAULT_TEMPLATES['change.md'] =
   '```json\n{\n  "title": "Changes requested: %reason%",\n  "summary": "Please update the code to match the spec: %spec%",\n  "acceptanceCriteria": ["Address review comments"]\n}\n```'
 
 DEFAULT_TEMPLATES['reviewChanges.md'] = `Summary of changes.`
+
+DEFAULT_TEMPLATES['todoList.md'] = `# To-Do
+
+%todos%
+`
 
 export async function ensureTemplatesDir(cwd = process.cwd()): Promise<void> {
   const dir = templatesDir(cwd)

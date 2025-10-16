@@ -359,12 +359,13 @@ describe('E2E Ollama gpt-oss:20b (ollama) suite', () => {
       let state = JSON.parse(readFileSync(path.join(tmp, '.agent', 'state.json'), 'utf8'))
       expect(statusIncludes(state, ['needs_clarification'])).toBe(true)
 
-      // append clarifications to progress.md
-      writeFileSync(
-        path.join(tmp, 'progress.md'),
-        readFileSync(path.join(tmp, 'progress.md'), 'utf8') + '\n\nClarification: Please be explicit about exports.',
-        'utf8'
-      )
+      // append clarifications to progress.json
+      {
+        const p = path.join(tmp, 'progress.json')
+        const doc = JSON.parse(readFileSync(p, 'utf8'))
+        doc.clarifications = (doc.clarifications || '') + '\n\nClarification: Please be explicit about exports.'
+        writeFileSync(p, JSON.stringify(doc, null, 2), 'utf8')
+      }
 
       // re-run until awaiting_review
       for (let i = 0; i < 3; i++) {
@@ -416,8 +417,16 @@ describe('E2E Ollama gpt-oss:20b (ollama) suite', () => {
 
       // simulate reviewer requesting changes by adding a failing gate: write to progress
       writeFileSync(
-        path.join(tmp, 'progress.md'),
-        readFileSync(path.join(tmp, 'progress.md'), 'utf8') + '\n\nReviewer: Add another unit test',
+        path.join(tmp, 'progress.json'),
+        JSON.stringify(
+          Object.assign(JSON.parse(readFileSync(path.join(tmp, 'progress.json'), 'utf8')), {
+            clarifications:
+              (JSON.parse(readFileSync(path.join(tmp, 'progress.json'), 'utf8')).clarifications || '') +
+              '\n\nReviewer: Add another unit test'
+          }),
+          null,
+          2
+        ),
         'utf8'
       )
 

@@ -68,7 +68,8 @@ export async function runCommand(
 
   const cp = execa(cmd, args, {
     cwd: opts.cwd,
-    timeout: opts.timeoutMs ?? 10 * 60_000,
+    // default to 15 minutes for CLI operations
+    timeout: opts.timeoutMs ?? 15 * 60_000,
     env: opts.env,
     reject: false
   })

@@ -45,3 +45,38 @@ export async function genChangeLLM(provider: string, spec?: string, reason?: str
 
   return callLLM(provider, prompt)
 }
+
+export async function genTodoListLLM(provider: string, spec?: string) {
+  const schema = {
+    type: 'array',
+    items: {
+      type: 'object',
+      properties: {
+        title: { type: 'string' },
+        description: { type: 'string' },
+        estimate: { type: 'string' }
+      },
+      required: ['title', 'description']
+    }
+  }
+
+  const prompt = `You are an assistant that transforms a specification into a concise ordered todo list.
+
+Spec:
+${spec || ''}
+
+Return a JSON array where each item has { "title": string, "description": string, "estimate": string (optional) }.
+Only return the JSON array. If you cannot produce strict JSON, return an empty array.`
+
+  const out = await callLLM(provider, prompt)
+  // Try to parse JSON from output; if it fails, return an empty array
+  try {
+    const m = out.match(/\[([\s\S]*)\]/m)
+    if (m) {
+      const jsonText = out.slice(out.indexOf('['), out.lastIndexOf(']') + 1)
+      const arr = JSON.parse(jsonText)
+      if (Array.isArray(arr)) return arr
+    }
+  } catch {}
+  return []
+}

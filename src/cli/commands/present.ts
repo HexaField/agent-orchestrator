@@ -5,16 +5,16 @@ import { applyProgressPatch, readProgress } from '../../core/progress'
 import { genClarifyAsync } from '../../core/templates'
 
 const present = new Command('present')
-  .description('Show progress.md sections and optionally approve or generate clarifications')
+  .description('Show progress.json sections and optionally approve or generate clarifications')
   .option('--cwd <path>', 'Working directory', '.')
   .option('--approve', 'Approve and set awaiting_approval', false)
-  .option('--clarify', 'Generate clarifying questions and write to progress.md', false)
+  .option('--clarify', 'Generate clarifying questions and write to progress.json', false)
   .action(async (opts) => {
     const cwd = path.resolve(process.cwd(), opts.cwd ?? '.')
     const content = await readProgress(cwd)
     // Simple console output — in tests we don't actually show it, but tests
     // invoke the command and then read state to validate behavior.
-    console.log(content || 'No progress.md found')
+    console.log(content || 'No progress.json found')
     if (opts.clarify) {
       const clar = await genClarifyAsync(content)
       await applyProgressPatch(cwd, { clarifications: clar })

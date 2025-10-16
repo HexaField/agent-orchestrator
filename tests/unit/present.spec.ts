@@ -10,7 +10,11 @@ describe('present CLI', () => {
     await fs.remove(tmp)
     await fs.ensureDir(tmp)
     await fs.ensureDir(path.join(tmp, '.agent'))
-    await fs.writeFile(path.join(tmp, 'progress.md'), '## Status\n\nidle\n', 'utf8')
+    await fs.writeFile(
+      path.join(tmp, 'progress.json'),
+      JSON.stringify({ status: 'idle', checklist: [] }, null, 2),
+      'utf8'
+    )
   })
   afterEach(async () => {
     await fs.remove(tmp)

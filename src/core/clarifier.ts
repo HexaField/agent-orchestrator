@@ -92,7 +92,10 @@ export async function clarifyLastRun(cwd: string, opts: ClarifierOptions = {}) {
       try {
         const repoRoot = process.cwd()
         const cli = path.join(repoRoot, 'bin', 'agent-orchestrator')
-        await execa('node', [cli, 'clarify', '--cwd', cwd, '--text', reply, '--approve'], { env: process.env })
+        await execa('node', [cli, 'clarify', '--cwd', cwd, '--text', reply, '--approve'], {
+          env: process.env,
+          timeout: 15 * 60_000
+        })
       } catch {}
     }
 

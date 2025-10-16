@@ -8,6 +8,7 @@ import presentCmd from './commands/present'
 import reviewCmd from './commands/review'
 import runCmd from './commands/run'
 import showRunCmd from './commands/show-run'
+import specToProgressCmd from './commands/spec-to-progress'
 import statusCmd from './commands/status'
 
 const program = new Command()
@@ -31,5 +32,6 @@ program.addCommand(presentCmd)
 program.addCommand(clarifyCmd)
 program.addCommand(showRunCmd)
 program.addCommand(listRejectionsCmd)
+program.addCommand(specToProgressCmd)
 
 program.parseAsync(process.argv)

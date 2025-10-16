@@ -13,7 +13,7 @@
   },
   "outputs": {
     "patches": [".agent/runs/run-2025-10-14T20-23-59.058Z/patches.diff"],
-    "stdout": "{\"type\":\"thread.started\"}\n{\"type\":\"turn.started\"}\n{\"type\":\"item.started\",\"item\":{\"id\":\"item_0\",\"type\":\"command_execution\",\"command\":\"zsh -lc 'ls -R'\",\"aggregated_output\":\"\",\"status\":\"in_progress\"}}\n{\"type\":\"item.completed\",\"item\":{\"id\":\"item_0\",\"type\":\"command_execution\",\"command\":\"zsh -lc 'ls -R'\",\"aggregated_output\":\"<HOME>/.zshenv:.:1: no such file or directory: <E2E_HOME>/.cargo/env\\npackage.json\\nprogress.md\\nspec.md\\n\",\"exit_code\":0,\"status\":\"completed\"}}",
+    "stdout": "{\"type\":\"thread.started\"}\n{\"type\":\"turn.started\"}\n{\"type\":\"item.started\",\"item\":{\"id\":\"item_0\",\"type\":\"command_execution\",\"command\":\"zsh -lc 'ls -R'\",\"aggregated_output\":\"\",\"status\":\"in_progress\"}}\n{\"type\":\"item.completed\",\"item\":{\"id\":\"item_0\",\"type\":\"command_execution\",\"command\":\"zsh -lc 'ls -R'\",\"aggregated_output\":\"<HOME>/.zshenv:.:1: no such file or directory: <E2E_HOME>/.cargo/env\\npackage.json\\nprogress.json\\nspec.md\\n\",\"exit_code\":0,\"status\":\"completed\"}}",
     "stderr": "",
     "artifacts": []
   },

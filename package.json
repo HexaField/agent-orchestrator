@@ -13,10 +13,10 @@
     "lint": "eslint . --ext .ts --max-warnings=20",
     "format:check": "prettier --check .",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "vitest run",
-    "e2e:codex-ollama-large": "vitest run tests/e2e/codex-ollama-large-context.spec.ts",
+    "test": "npm run build --silent && vitest run",
+    "e2e:codex-ollama-large": "npm run build --silent && vitest run tests/e2e/codex-ollama-large-context.spec.ts --testTimeout=900000",
     "test:watch": "vitest",
-    "e2e": "vitest run tests/e2e",
+    "e2e": "npm run build --silent && vitest run tests/e2e --testTimeout=900000",
     "format": "prettier -w .",
     "prepublishOnly": "npm run lint && npm run typecheck && npm test && npm run build"
   },

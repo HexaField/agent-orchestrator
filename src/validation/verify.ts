@@ -21,14 +21,14 @@ export async function runVerification(cwd: string = process.cwd()) {
   let typecheck: 'pass' | 'fail' = 'pass'
 
   try {
-    await execa('npm', ['run', 'lint'], { cwd, timeout: 30_000 })
+    await execa('npm', ['run', 'lint'], { cwd, timeout: 10 * 60_000 })
     lint = 'pass'
   } catch {
     lint = 'fail'
   }
 
   try {
-    await execa('npm', ['run', 'typecheck'], { cwd, timeout: 30_000 })
+    await execa('npm', ['run', 'typecheck'], { cwd, timeout: 10 * 60_000 })
     typecheck = 'pass'
   } catch {
     typecheck = 'fail'

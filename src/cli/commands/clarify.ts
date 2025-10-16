@@ -1,11 +1,11 @@
 import { Command } from 'commander'
 import path from 'path'
 import { setState } from '../../core/orchestrator'
-import { applyProgressPatch, readProgress } from '../../core/progress'
+import { applyProgressPatch } from '../../core/progress'
 import { genClarifyAsync } from '../../core/templates'
 
 const clarify = new Command('clarify')
-  .description('Generate or apply clarifications to progress.md')
+  .description('Generate or apply clarifications to progress.json')
   .option('--cwd <path>', 'Working directory', '.')
   .option('--text <text>', 'Clarification text to apply (if provided)')
   .option('--approve', 'After applying clarifications, mark awaiting approval', false)
@@ -19,9 +19,12 @@ const clarify = new Command('clarify')
       return
     }
 
-    // generate clarifying questions based on spec/progress
-    const progress = await readProgress(cwd)
-    const clar = await genClarifyAsync(progress)
+    // generate clarifying questions based on spec
+    let spec = ''
+    try {
+      spec = await (await import('fs')).promises.readFile(path.join(cwd, 'spec.md'), 'utf8')
+    } catch {}
+    const clar = await genClarifyAsync(spec)
     await applyProgressPatch(cwd, { clarifications: clar })
     process.stdout.write('clarifications written\n')
   })

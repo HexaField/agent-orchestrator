@@ -9,7 +9,7 @@ import { runVerification } from '../validation/verify'
 import { routeWhatDone, whatDoneFromText } from './evaluation'
 import { withLock } from './locks'
 import { applyProgressPatch } from './progress'
-import { genChecklist, genNext, genResponseType } from './templates'
+import { genNext, genResponseType } from './templates'
 
 export async function getState(cwd: string): Promise<StateJsonV1> {
   const p = path.join(cwd, '.agent', 'state.json')
@@ -96,7 +96,20 @@ export async function runOnce(
       specText = await fs.readFile(path.join(cwd, 'spec.md'), 'utf8')
     } catch {}
 
-    const checklist = genChecklist(specText)
+    // Require that the repository has a checklist produced by `spec-to-progress`.
+    // This prevents the orchestrator from guessing checklist items and forces
+    // an explicit spec-to-progress step to be taken by the user or CI.
+    const { readProgress } = await import('./progress')
+    const progressContent = await readProgress(cwd)
+    const hasInlineChecklist =
+      progressContent.includes('<!-- CHECKLIST:BEGIN -->') && progressContent.includes('<!-- CHECKLIST:END -->')
+    const hasChecklistSection = /##\s+Checklist\b/m.test(progressContent)
+    if (!hasInlineChecklist && !hasChecklistSection) {
+      throw new Error(
+        'Missing checklist in progress.json — run `agent-orchestrator spec-to-progress` to generate it before running the agent.'
+      )
+    }
+    const checklist = [] as string[]
     const { genContextAsync } = await import('./templates')
     const contextPrompt = await genContextAsync(specText, cwd)
     const responseType = await genResponseType()

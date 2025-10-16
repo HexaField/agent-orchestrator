@@ -1,6 +1,6 @@
 import fs from 'fs'
 import path from 'path'
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 // We'll mock the LLM adapter module used by the clarifier
 vi.mock('../../src/adapters/llm', () => {

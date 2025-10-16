@@ -86,7 +86,7 @@ sequenceDiagram
   Orchestrator->>Review: reviewCodeAsync(diff)
   Review-->>Orchestrator: review result
   Orchestrator->>Templates: genUpdate -> progressPatch
-  Orchestrator->>FS: applyProgressPatch (progress.md)
+  Orchestrator->>FS: applyProgressPatch (progress.json)
   Orchestrator->>FS: append audit.log
   Orchestrator->>FS: write state.json
   Orchestrator-->>CLI: runJson (result)
@@ -103,7 +103,7 @@ Key points:
 
 - State: `.agent/state.json` (version, currentRunId, status, lastOutcome, nextTask).
 - Run artifacts: `.agent/runs/<runId>/run.json` contains inputs, outputs, whatDone, verification, git diffs, and metadata. Optionally `.agent/runs/<runId>/patches.diff` and `applied.marker`.
-- Progress: `progress.md` is structured with `##` sections and may contain Checklist, Clarifications, Decisions, Next Task, and Status. `src/core/progress.ts` provides helpers to read and write sections and accept structured ProgressPatch objects.
+- Progress: `progress.json` is a structured JSON document. `src/core/progress.ts` provides helpers to read and write the JSON doc and accept structured ProgressPatch objects.
 
 ## LLM adapter contract
 

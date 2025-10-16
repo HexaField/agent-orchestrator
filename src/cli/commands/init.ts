@@ -8,7 +8,7 @@ import { genChecklist } from '../../core/templates'
 import { ensureDir } from '../../io/fs'
 
 const init = new Command('init')
-  .description('Initialize .agent/ and progress.md, derive initial checklist from spec.md')
+  .description('Initialize .agent/ and progress.json, derive initial checklist from spec.md')
   .option('--cwd <path>', 'Working directory', '.')
   .action(async (opts) => {
     const cwd = path.resolve(process.cwd(), opts.cwd ?? '.')
@@ -24,12 +24,18 @@ const init = new Command('init')
     } catch {}
 
     const checklist = genChecklist(spec)
+    const progressPath = path.join(cwd, 'progress.json')
+    const progressDoc = {
+      context: '',
+      clarifications: '',
+      checklist: checklist.map((c) => ({ done: false, description: c })),
+      decisions: '',
+      status: 'initialized',
+      nextTask: null
+    }
+    await fs.writeFile(progressPath, JSON.stringify(progressDoc, null, 2), 'utf8')
 
-    const progressPath = path.join(cwd, 'progress.md')
-    const progressContent = `# Progress\n\n## Context\n\n\n## Clarifications\n\n\n## Checklist\n\n<!-- CHECKLIST:BEGIN -->\n${checklist.map((i) => `- [ ] ${i}`).join('\n')}\n<!-- CHECKLIST:END -->\n\n## Decisions\n\n\n## Status\n\ninitialized\n\n## Next Task\n\n`
-    await fs.writeFile(progressPath, progressContent, 'utf8')
-
-    console.log(`Initialized .agent/ and progress.md in ${cwd}`)
+    console.log(`Initialized .agent/ and progress.json in ${cwd}`)
 
     await setState(cwd, {
       version: 1,

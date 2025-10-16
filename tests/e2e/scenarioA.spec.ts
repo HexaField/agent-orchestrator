@@ -29,7 +29,7 @@ describe('E2E Scenario A (happy path)', () => {
 
   it('init creates .agent and progress', async () => {
     await execa('node', [cli, 'init', '--cwd', cwd])
-    const prog = readFileSync(path.join(cwd, 'progress.md'), 'utf8')
+    const prog = readFileSync(path.join(cwd, 'progress.json'), 'utf8')
     expect(prog).toContain('CHECKLIST:BEGIN')
   })
 
@@ -45,7 +45,7 @@ describe('E2E Scenario A (happy path)', () => {
     )
     const state = JSON.parse(readFileSync(path.join(cwd, '.agent', 'state.json'), 'utf8'))
     expect(state.status).toBeDefined()
-    const prog = readFileSync(path.join(cwd, 'progress.md'), 'utf8')
+    const prog = readFileSync(path.join(cwd, 'progress.json'), 'utf8')
     expect(prog).toMatch(/## Status[\s\S]*awaiting_review/)
   })
 })

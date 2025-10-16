@@ -1,7 +1,7 @@
 import { Command } from 'commander'
 import path from 'path'
 import { setState } from '../../core/orchestrator'
-import { applyProgressPatch, writeSectionAtomic } from '../../core/progress'
+import { applyProgressPatch } from '../../core/progress'
 
 const review = new Command('review')
   .description('Review code changes and gate the flow')
@@ -30,9 +30,8 @@ const review = new Command('review')
           rec = genChange()
         }
         const body = `ID: ${rec.id}\nTitle: ${rec.title}\nSummary: ${rec.summary}\nAcceptance Criteria:\n${rec.acceptanceCriteria.map((c) => `- ${c}`).join('\n')}\nCreated: ${rec.createdAt}`
-        await applyProgressPatch(cwd, { decisions: undefined })
+        await applyProgressPatch(cwd, { decisions: body })
         await applyProgressPatch(cwd, { nextTask: rec })
-        await writeSectionAtomic(cwd, 'Recommendations', body)
         await setState(cwd, { status: 'changes_requested', nextTask: rec } as any)
       } catch {
         // ignore write failures

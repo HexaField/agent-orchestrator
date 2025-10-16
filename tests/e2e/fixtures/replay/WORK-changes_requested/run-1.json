@@ -7,7 +7,7 @@
   "outputs": { "patches": [], "stdout": "Please add another unit test to satisfy gating", "stderr": "" },
   "whatDone": "changes_requested",
   "verification": { "lint": "fail", "typecheck": "pass", "tests": { "passed": 0, "failed": 1 } },
-  "git": { "files": ["progress.md"], "diff": "" },
+  "git": { "files": ["progress.json"], "diff": "" },
   "endedAt": "2025-10-14T11:53:52.753Z",
   "durationMs": 14681
 }
