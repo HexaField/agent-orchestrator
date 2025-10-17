@@ -11,8 +11,8 @@ describe('codex PTY adapter (unit)', () => {
     const eventsToEmit = [
       JSON.stringify({ thinking: 'Analyzing...' }) + '\n',
       JSON.stringify({ response: 'What file should I write?' }) + '\n',
-      '=== src/hello.txt ===\nHello world\n',
-      '```\n// File: src/cli/sum-lines.ts\nexport const sum = (a,b)=>a+b\n```\n'
+      '=== tests/fixtures/hello.txt ===\nHello world\n',
+      '```\n// File: tests/fixtures/sum-lines.ts\nexport const sum = (a,b)=>a+b\n```\n'
     ]
 
     // Fake PTY implementation

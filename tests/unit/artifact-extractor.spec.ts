@@ -37,17 +37,17 @@ describe('artifact extractor', () => {
   it('extracts marker-style files and fenced code File headers', () => {
     const sessionId = 'test-session-2'
     const extractor = createArtifactExtractor(sessionId, process.cwd())
-    const marker = '=== src/hello.txt ===\nHello world\n'
-    const fence = '```ts\n// File: src/ok.ts\nexport const ok = 1\n```\n'
+    const marker = '=== tests/fixtures/hello.txt ===\nHello world\n'
+    const fence = '```ts\n// File: tests/fixtures/ok.ts\nexport const ok = 1\n```\n'
     extractor.process(marker)
     extractor.process(fence)
     extractor.finalize()
 
-    const markerFile = path.join(process.cwd(), 'src', 'hello.txt')
+    const markerFile = path.join(process.cwd(), 'tests/fixtures', 'hello.txt')
     expect(fs.existsSync(markerFile)).toBeTruthy()
     expect(fs.readFileSync(markerFile, 'utf8')).toContain('Hello world')
 
-    const fenceFile = path.join(process.cwd(), 'src', 'ok.ts')
+    const fenceFile = path.join(process.cwd(), 'tests/fixtures', 'ok.ts')
     expect(fs.existsSync(fenceFile)).toBeTruthy()
     expect(fs.readFileSync(fenceFile, 'utf8')).toContain('export const ok')
   })

@@ -3,16 +3,13 @@ import path from 'path'
 
 export default defineConfig({
   test: {
-    globals: true,
     environment: 'node',
-    include: ['tests/unit/**/*.spec.ts', 'tests/integration/**/*.spec.ts'],
-    isolate: true,
-    coverage: {
-      provider: 'v8'
-    },
-    reporters: ['default'],
+    include: ['tests/e2e/**/*.spec.ts'],
+    globals: true,
+    reporters: ['verbose'],
     printConsoleTrace: true,
-    silent: false
+    silent: false,
+    testTimeout: 10 * 60 * 1000
   },
   resolve: {
     alias: {

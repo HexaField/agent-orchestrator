@@ -105,7 +105,7 @@ name = "Ollama"
   return base
 }
 
-// Create a temporary git repo under .e2e/WORK-<ts> in project root
+// Create a temporary git repo under .tmp/WORK-<ts> in project root
 // helper: find latest run dir name under .agent/runs
 
 // Helper to find latest run dir
@@ -194,7 +194,7 @@ describe('E2E Ollama gpt-oss:20b (ollama) suite', () => {
     async () => {
       if (skippable) return
 
-      const tmp = path.join(repoRoot, '.e2e', `WORK-${Date.now()}`)
+      const tmp = path.join(repoRoot, '.tmp', `WORK-${Date.now()}`)
       // create dir tree
       await execa('mkdir', ['-p', tmp])
 
@@ -327,7 +327,7 @@ describe('E2E Ollama gpt-oss:20b (ollama) suite', () => {
     'scenario 2: needs clarification then re-run',
     async () => {
       if (skippable) return
-      const tmp = path.join(repoRoot, '.e2e', `WORK-${Date.now()}`)
+      const tmp = path.join(repoRoot, '.tmp', `WORK-${Date.now()}`)
       await execa('mkdir', ['-p', tmp])
       cpSync(path.join(__dirname, '..', 'fixtures', 'simple-spec', 'spec.md'), path.join(tmp, 'spec.md'))
       await execa('git', ['init'], { cwd: tmp })
@@ -391,7 +391,7 @@ describe('E2E Ollama gpt-oss:20b (ollama) suite', () => {
     'scenario 3: changes requested until extra test added',
     async () => {
       if (skippable) return
-      const tmp = path.join(repoRoot, '.e2e', `WORK-${Date.now()}`)
+      const tmp = path.join(repoRoot, '.tmp', `WORK-${Date.now()}`)
       await execa('mkdir', ['-p', tmp])
       cpSync(fixtureSpec, path.join(tmp, 'spec.md'))
       await execa('git', ['init'], { cwd: tmp })
@@ -477,7 +477,7 @@ describe('E2E Ollama gpt-oss:20b (ollama) suite', () => {
     'scenario 4: create merge conflict and recover on next run',
     async () => {
       if (skippable) return
-      const tmp = path.join(repoRoot, '.e2e', `WORK-${Date.now()}`)
+      const tmp = path.join(repoRoot, '.tmp', `WORK-${Date.now()}`)
       await execa('mkdir', ['-p', tmp])
       cpSync(fixtureSpec, path.join(tmp, 'spec.md'))
       await execa('git', ['init'], { cwd: tmp })

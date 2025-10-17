@@ -17,5 +17,5 @@
     "paths": {}
   },
   "include": ["src", "tests", "bin"],
-  "exclude": [".e2e"]
+  "exclude": [".tmp"]
 }

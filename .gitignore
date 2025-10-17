@@ -1,6 +1,5 @@
 node_modules/
 dist/
-.tmp-*/
-.e2e/
+.tmp/
 .agent/
 .DS_Store

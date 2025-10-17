@@ -35,7 +35,7 @@ function makeMockSessionAdapter() {
 describe('orchestrator clarify loop', () => {
   let tmpCwd: string
   beforeEach(() => {
-    tmpCwd = fs.mkdtempSync(path.join(process.cwd(), '.tmp-orch-'))
+    tmpCwd = fs.mkdtempSync(path.join(process.cwd(), '.tmp/test-orch-'))
     // write a minimal spec.md and progress.json
     fs.writeFileSync(path.join(tmpCwd, 'spec.md'), '# spec\n', 'utf8')
     fs.writeFileSync(path.join(tmpCwd, 'progress.json'), JSON.stringify({ checklist: ['do it'] }), 'utf8')

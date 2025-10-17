@@ -5,13 +5,18 @@ import { expect, it } from 'vitest'
 
 const repoRoot = path.resolve(__dirname, '../../')
 
+// Force the agent and LLM provider/model for this e2e to avoid replay/read-only behavior
+process.env.AGENT = process.env.AGENT || 'codex'
+process.env.LLM_PROVIDER = process.env.LLM_PROVIDER || 'ollama'
+process.env.LLM_MODEL = process.env.LLM_MODEL || 'gpt-oss:20b'
+
 it(
   'completes progress.json autonomously from spec.md',
   async () => {
     /**
      * 1. Create a temporary directory with a minimal spec.md
      */
-    const tmp = path.join(repoRoot, '.e2e', `E2E-${Date.now()}`)
+    const tmp = path.join(repoRoot, '.tmp', `E2E-${Date.now()}`)
     try {
       rmSync(tmp, { recursive: true, force: true })
     } catch {}
@@ -114,6 +119,15 @@ Words: 2
      */
 
     // run which will invoke runOnce and the automated clarifier we added
+    // Ensure project config uses the codex write-capable agent and desired LLM
+    try {
+      await execa('node', ['-e', `require('fs').mkdirSync('${path.join(tmp, '.agent')}', { recursive: true }); require('fs').writeFileSync('${path.join(
+        tmp,
+        '.agent',
+        'config.json'
+      )}', JSON.stringify({ AGENT: 'codex', LLM_PROVIDER: 'ollama', LLM_MODEL: 'gpt-oss:20b' }, null, 2), 'utf8')`])
+    } catch {}
+
     await execa('node', [npxBin, 'run', '--cwd', tmp], {
       timeout: CLI_TIMEOUT,
       stdout: 'inherit',

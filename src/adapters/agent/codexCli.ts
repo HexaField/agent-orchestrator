@@ -262,7 +262,7 @@ export function createCodexCli(): AgentAdapter {
                       ''
                     )
                   }
-                  const guessPath = path.join(input.cwd || '.', relPath || 'src/cli/sum-lines.ts')
+                  const guessPath = path.join(input.cwd || '.', relPath)
                   try {
                     fs.mkdirSync(path.dirname(guessPath), { recursive: true })
                     fs.writeFileSync(guessPath, content, 'utf8')
