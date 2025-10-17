@@ -1,6 +1,8 @@
 import type { AgentAdapter } from '../../types/adapters'
 import { createCodexCli } from './codexCli'
+import { createCodexPtyAdapter } from './codexPty'
 import { createCopilotCli } from './copilotCli'
+import { createCopilotPtyAdapter } from './copilotPty'
 import { createCustom } from './custom'
 import { createHttpAgent } from './http'
 import { createReplayAgent } from './replay'
@@ -8,9 +10,17 @@ import { createReplayAgent } from './replay'
 export function getAgentAdapter(name: string): AgentAdapter {
   switch (name) {
     case 'codex-cli':
-      return createCodexCli()
+      try {
+        return createCodexPtyAdapter()
+      } catch {
+        return createCodexCli()
+      }
     case 'copilot-cli':
-      return createCopilotCli()
+      try {
+        return createCopilotPtyAdapter()
+      } catch {
+        return createCopilotCli()
+      }
     case 'custom':
       return createCustom()
     case 'http':

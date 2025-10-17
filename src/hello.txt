@@ -1,0 +1,8 @@
+Hello world
+
+```ts
+// File: src/ok.ts
+export const ok = 1
+```
+
+

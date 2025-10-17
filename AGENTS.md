@@ -11,3 +11,5 @@ When told to remove something, always remove it completely and do not leave any 
 Include jsdoc annotations for all functions and methods.
 
 Always implement with a declarative, functional programming style.
+
+Always update all relevant documentation files to reflect the current state of the codebase and its functionalities.

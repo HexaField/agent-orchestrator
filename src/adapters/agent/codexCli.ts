@@ -17,12 +17,10 @@ export function createCodexCli(): AgentAdapter {
         if (cfg && cfg.LLM_MODEL) model = model || cfg.LLM_MODEL
       } catch {}
       // The Codex CLI expects the initial prompt as a positional argument to `codex exec`.
-      const args: string[] = ['exec']
+      const args: string[] = []
       // preArgs hold global options that must appear before the 'exec' subcommand
       const preArgs: string[] = []
 
-      // Run in non-interactive JSON mode where possible.
-      args.push('--json')
       // If an explicit LLM endpoint/base URL was provided, build codex --config
       // overrides instead of relying on an external profile file. Prefer project
       // config over environment when available.
@@ -40,70 +38,36 @@ export function createCodexCli(): AgentAdapter {
       const codeXBaseFinal = input.env?.LLM_ENDPOINT || cfgBase
       const codeXProviderFinal = input.env?.LLM_PROVIDER || cfgProvider || 'ollama'
       const configArgs: string[] = []
-      if (codeXBaseFinal) {
-        // Build --config flags expected by the codex CLI to override provider and model
-        // Example: --config model_provider=ollama --config model_providers.ollama.base_url=http://127.0.0.1:11423/v1 --config model_providers.ollama.name="Ollama" --config model=gpt-oss:20b
-        // noop: we will compute finalModel below when needed
+      if (!codeXBaseFinal)
+        throw new Error('LLM_ENDPOINT must be provided in env or project config for codex CLI adapter')
 
-        const provider = String(codeXProviderFinal)
-        const providerCap = provider.charAt(0).toUpperCase() + provider.slice(1)
-        configArgs.push('--config', `model_provider=${provider}`)
-        configArgs.push('--config', `model_providers.${provider}.base_url=${codeXBaseFinal}`)
-        configArgs.push('--config', `model_providers.${provider}.name="${providerCap}"`)
-        if (
-          model ||
-          (await (async () => {
-            try {
-              const { getEffectiveConfig } = await import('../../config')
-              const c = await getEffectiveConfig(input.cwd || '.')
-              return c?.LLM_MODEL
-            } catch {
-              return undefined
-            }
-          })())
-        ) {
-          const finalModel =
-            model ||
-            (await (async () => {
-              try {
-                const { getEffectiveConfig } = await import('../../config')
-                const c = await getEffectiveConfig(input.cwd || '.')
-                return c?.LLM_MODEL
-              } catch {
-                return undefined
-              }
-            })())
-          if (finalModel) configArgs.push('--config', `model=${finalModel}`)
-        }
+      const provider = String(codeXProviderFinal)
+      const providerCap = provider.charAt(0).toUpperCase() + provider.slice(1)
+      configArgs.push('--profile', `gpt-oss-20b-${provider}`)
 
-        // Ensure the codex profile exists in the system root ~/.codex/config.toml
+      // Ensure the codex profile exists in the system root ~/.codex/config.toml
+      try {
+        const ROOT = path.join(os.homedir())
+        const tomlDir = path.join(ROOT, '.codex')
         try {
-          const ROOT = path.join(os.homedir())
-          const tomlDir = path.join(ROOT, '.codex')
-          try {
-            fs.mkdirSync(tomlDir, { recursive: true })
-          } catch {}
-          const tomlPath = path.join(tomlDir, 'config.toml')
-          try {
-            // Minimal profile section name to mirror the CLI example name used historically
-            const profileName = `gpt-oss-20b-${provider}`
-            let existing = ''
-            try {
-              try {
-                console.log('DEBUG: reading existing codex config at', tomlPath)
-                console.log(fs.readFileSync(tomlPath, 'utf8'))
-              } catch {}
-              if (fs.existsSync(tomlPath)) existing = fs.readFileSync(tomlPath, 'utf8')
-            } catch {}
-            if (!existing.includes(`[profiles.${profileName}]`)) {
-              const block = `\n[profiles.${profileName}]\nbase_url = "${codeXBaseFinal}"\nname = "${providerCap}"\n`
-              try {
-                fs.appendFileSync(tomlPath, block, 'utf8')
-              } catch {}
-            }
-          } catch {}
+          fs.mkdirSync(tomlDir, { recursive: true })
         } catch {}
-      }
+        const tomlPath = path.join(tomlDir, 'config.toml')
+        try {
+          // Minimal profile section name to mirror the CLI example name used historically
+          const profileName = `gpt-oss-20b-${provider}`
+          let existing = ''
+          try {
+            if (fs.existsSync(tomlPath)) existing = fs.readFileSync(tomlPath, 'utf8')
+          } catch {}
+          if (!existing.includes(`[profiles.${profileName}]`)) {
+            const block = `\n[profiles.${profileName}]\nbase_url = "${codeXBaseFinal}"\nname = "${providerCap}"\n`
+            try {
+              fs.appendFileSync(tomlPath, block, 'utf8')
+            } catch {}
+          }
+        } catch {}
+      } catch {}
 
       // Always allow the codex CLI to be invoked; sandbox/approval flags are
       // not injected here. Tests that require a writable sandbox should set
@@ -144,12 +108,6 @@ export function createCodexCli(): AgentAdapter {
         }
         const invPath = path.join(outDirEarly, 'codex-invocation.json')
         fs.writeFileSync(invPath, JSON.stringify(earlyDump, null, 2), 'utf8')
-        if (input.env && input.env['DEBUG_CODEX'] === '1') {
-          try {
-            console.error('DEBUG: wrote codex invocation to', invPath)
-            console.error('DEBUG: invocation args=', JSON.stringify(earlyDump.args).slice(0, 1000))
-          } catch {}
-        }
       } catch {}
 
       // Prefer invoking the external `codex` CLI. The adapter will not use
@@ -187,24 +145,12 @@ export function createCodexCli(): AgentAdapter {
         // ignore write errors
       }
 
-      if (input.env && input.env['DEBUG_CODEX'] === '1') {
-        console.error('DEBUG codex-cli preArgs=', JSON.stringify(preArgs))
-        console.error('DEBUG codex-cli args=', JSON.stringify(args))
-        console.error('DEBUG codex-cli LLM_ENDPOINT=', env.LLM_ENDPOINT)
-      }
-
       const maxAttempts = Number(input.env?.LLM_RETRY_ATTEMPTS ?? process.env.LLM_RETRY_ATTEMPTS ?? 5)
       let lastRes: { stdout: string; stderr: string; exitCode: number } | null = null
 
-      // Only apply the inner-loop retry behavior for the CLI path (preferred).
-      // Prepend any config overrides we generated to the CLI args so they are passed
-      // as explicit --config flags to the codex CLI.
       const cliArgsBase = [...preArgs, ...configArgs, ...args]
       for (let attempt = 1; attempt <= Math.max(1, maxAttempts); attempt++) {
         const finalArgs = [...cliArgsBase]
-        console.log(`codex-cli: attempt ${attempt} of ${maxAttempts}...`)
-        console.log(finalArgs)
-
         // write per-attempt invocation diagnostics
         try {
           const outDir = path.join(input.cwd || '.', '.agent')

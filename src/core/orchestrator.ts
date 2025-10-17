@@ -115,11 +115,37 @@ export async function runOnce(
     ].join('\n\n')
 
     let agentRes: any
-    if (opts.prompt) {
-      agentRes = await agent.run({ prompt: initialAgentPrompt, cwd })
+    const isSessionAgent = (agent as any).startSession && (agent as any).send && (agent as any).closeSession
+    if (isSessionAgent) {
+      // session-based flow
+      const sessAgent = agent as any
+      const session = await sessAgent.startSession({ cwd, env: process.env })
+      try {
+        const promptToSend = opts.prompt
+          ? initialAgentPrompt
+          : (await llm.generate({ prompt: llmPrompt, temperature: 0 })).text || initialAgentPrompt
+        // collect response by consuming the async iterable until it completes or times out
+        let stdout = ''
+        try {
+          for await (const ev of sessAgent.send(session, promptToSend)) {
+            try {
+              stdout += typeof ev === 'string' ? ev : JSON.stringify(ev) + '\n'
+            } catch {}
+          }
+        } catch {}
+        agentRes = { stdout, stderr: '', exitCode: 0 }
+      } finally {
+        try {
+          await sessAgent.closeSession(session)
+        } catch {}
+      }
     } else {
-      const llmOut = await llm.generate({ prompt: llmPrompt, temperature: 0 })
-      agentRes = await agent.run({ prompt: llmOut.text || initialAgentPrompt, cwd })
+      if (opts.prompt) {
+        agentRes = await agent.run({ prompt: initialAgentPrompt, cwd })
+      } else {
+        const llmOut = await llm.generate({ prompt: llmPrompt, temperature: 0 })
+        agentRes = await agent.run({ prompt: llmOut.text || initialAgentPrompt, cwd })
+      }
     }
 
     const patchesFiles: string[] = []

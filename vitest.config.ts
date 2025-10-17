@@ -3,6 +3,8 @@ import { defineConfig } from 'vitest/config'
 export default defineConfig({
   test: {
     include: ['tests/**/test.ts', 'tests/**/*.spec.ts'],
-    reporters: ['verbose']
+    reporters: ['verbose'],
+    printConsoleTrace: true,
+    silent: false
   }
 })
