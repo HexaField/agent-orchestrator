@@ -17,6 +17,10 @@ export function createCodexCli(): AgentAdapter {
         if (cfg && cfg.LLM_MODEL) model = model || cfg.LLM_MODEL
       } catch {}
       // The Codex CLI expects the initial prompt as a positional argument to `codex exec`.
+      // For interactive mode we do not pass the `exec`/`--json` flags so the
+      // vendored wrapper runs in its interactive flow and sees a TTY when
+      // spawned via a PTY. The runCommand helper will spawn a PTY for
+      // interactive invocations.
       const args: string[] = []
       // preArgs hold global options that must appear before the 'exec' subcommand
       const preArgs: string[] = []
@@ -172,7 +176,16 @@ export function createCodexCli(): AgentAdapter {
 
         // invoke codex CLI
         try {
-          const res = await runCommand('codex', finalArgs, { cwd: input.cwd, timeoutMs: input.timeoutMs, env })
+          const res = await runCommand(
+            'codex',
+            finalArgs,
+            { cwd: input.cwd, timeoutMs: input.timeoutMs, env },
+            // simple adapter-level responder: reply with an empty string to any interactive prompt
+            (_line: string, respond: (input: string) => Promise<void>) => {
+              // temporary simple responder: reply with an empty string
+              void respond('')
+            }
+          )
           lastRes = res
 
           const out = String(res.stdout || '')

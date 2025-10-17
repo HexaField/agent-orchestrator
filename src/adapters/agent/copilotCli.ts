@@ -13,7 +13,16 @@ export function createCopilotCli(): AgentAdapter {
       let lastErr: unknown = null
       for (const t of tries) {
         try {
-          const res = await runCommand(t.cmd, t.args, { cwd: input.cwd, timeoutMs: input.timeoutMs, env: input.env })
+          const res = await runCommand(
+            t.cmd,
+            t.args,
+            { cwd: input.cwd, timeoutMs: input.timeoutMs, env: input.env },
+            // simple responder: reply with an empty string to any interactive prompt
+            (_line: string, respond: (input: string) => Promise<void>) => {
+              // temporary simple responder: reply with an empty string
+              void respond('')
+            }
+          )
           // normalize output
           return { stdout: res.stdout, stderr: res.stderr, exitCode: res.exitCode }
         } catch (err) {
