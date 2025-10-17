@@ -1,5 +1,6 @@
 import fs from 'fs'
 import path from 'path'
+import nodePty from 'node-pty'
 import type { SessionEvent } from '../../types/adapters'
 import { createArtifactExtractor } from './artifactExtractor'
 import { createPtyParser } from './ptyParser'
@@ -18,7 +19,6 @@ export type PtyFactory = (cmd: string, args: string[], opts: any) => Pty
 
 export function defaultPtyFactory(): PtyFactory {
   return (cmd: string, args: string[], opts: any) => {
-    const nodePty = require('node-pty')
     return nodePty.spawn(cmd, args, opts) as unknown as Pty
   }
 }

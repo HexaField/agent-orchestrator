@@ -1,14 +1,12 @@
 import { execa } from 'execa'
+import { getEffectiveConfig } from '../config'
 
 export async function runVerification(cwd: string = process.cwd()) {
   // Environment override is respected first for tests/CI
   if (process.env.SKIP_VERIFY === '1' || process.env.SKIP_VERIFY === 'true') {
     return { skipped: true, lint: 'pass', typecheck: 'pass', tests: { passed: 0, failed: 0 } }
   }
-
-  // dynamic import so tests can mock the config module before this file is evaluated
   try {
-    const { getEffectiveConfig } = await import('../config')
     const cfg = await getEffectiveConfig(cwd)
     if (cfg && cfg.SKIP_VERIFY) {
       return { skipped: true, lint: 'pass', typecheck: 'pass', tests: { passed: 0, failed: 0 } }

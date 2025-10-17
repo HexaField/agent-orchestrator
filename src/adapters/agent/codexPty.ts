@@ -1,3 +1,4 @@
+import { execFileSync } from 'child_process'
 import type { SessionAgentAdapter } from '../../types/adapters'
 import { createSessionSender, PtyFactory, startPtySession } from './ptySession'
 
@@ -17,8 +18,6 @@ export function createCodexPtyAdapter(options?: {
     async run(input) {
       // fallback run: spawn exec --json once and collect output (keeps parity with old adapter)
       const args = ['exec', '--json', input.prompt || '']
-      // Use child_process for the non-PTY run to keep it simple here
-      const { execFileSync } = await import('child_process')
       try {
         const out = execFileSync('codex', args, {
           cwd: input.cwd,

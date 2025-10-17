@@ -2,6 +2,8 @@ import { Command } from 'commander'
 import path from 'path'
 import { setState } from '../../core/orchestrator'
 import { applyProgressPatch } from '../../core/progress'
+import { getEffectiveConfig } from '../../config'
+import { genChangeAsync, genChange } from '../../core/templates'
 
 const review = new Command('review')
   .description('Review code changes and gate the flow')
@@ -18,15 +20,12 @@ const review = new Command('review')
         let rec
         let useLLM = false
         try {
-          const { getEffectiveConfig } = await import('../../config')
           const cfg = await getEffectiveConfig(cwd)
           if (cfg && cfg.USE_LLM_GEN) useLLM = true
         } catch {}
         if (useLLM) {
-          const { genChangeAsync } = await import('../../core/templates')
           rec = await genChangeAsync(undefined, 'review')
         } else {
-          const { genChange } = await import('../../core/templates')
           rec = genChange()
         }
         const body = `ID: ${rec.id}\nTitle: ${rec.title}\nSummary: ${rec.summary}\nAcceptance Criteria:\n${rec.acceptanceCriteria.map((c) => `- ${c}`).join('\n')}\nCreated: ${rec.createdAt}`

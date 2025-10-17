@@ -8,8 +8,10 @@ import type { StateJsonV1, WhatDone } from '../types/models'
 import { runVerification } from '../validation/verify'
 import { routeWhatDone, whatDoneFromText } from './evaluation'
 import { withLock } from './locks'
-import { applyProgressPatch } from './progress'
-import { genNext, genResponseType } from './templates'
+import { applyProgressPatch, readProgressJson, readNextTaskAcceptanceCriteria } from './progress'
+import { genNext, genResponseType, genContextAsync, genClarifyAsync, genUpdate } from './templates'
+import { exec } from 'child_process'
+import { gitDiffNameOnly, gitDiffFull } from '../io/git'
 
 export async function getState(cwd: string): Promise<StateJsonV1> {
   const p = path.join(cwd, '.agent', 'state.json')
@@ -85,8 +87,7 @@ export async function runOnce(
       specText = await fs.readFile(path.join(cwd, 'spec.md'), 'utf8')
     } catch {}
 
-    const { readProgressJson } = await import('./progress')
-    const parsedProgress = await readProgressJson(cwd)
+  const parsedProgress = await readProgressJson(cwd)
     if (!parsedProgress || !Array.isArray((parsedProgress as any).checklist)) {
       throw new Error(
         'Missing checklist in progress.json — run `agent-orchestrator spec-to-progress` to generate it before running the agent.'
@@ -96,9 +97,8 @@ export async function runOnce(
     const checklist = (parsedProgress.checklist || [])
       .map((i: any) => (typeof i === 'string' ? i : i.description || ''))
       .filter(Boolean)
-    const { genContextAsync, genClarifyAsync, genUpdate } = await import('./templates')
-    const contextPrompt = await genContextAsync(specText, cwd)
-    const responseType = await genResponseType()
+  const contextPrompt = await genContextAsync(specText, cwd)
+  const responseType = await genResponseType()
 
     const extraContext: string[] = []
     if (current.nextTask) {
@@ -227,7 +227,6 @@ export async function runOnce(
       const out = (agentRes.stdout || '').trim()
       if (out) {
         try {
-          const { exec } = await import('child_process')
           await new Promise<void>((resolve, reject) => {
             exec(out, { cwd: cwd as any, shell: true as any }, (err: any) => {
               if (err) return reject(err)
@@ -302,7 +301,6 @@ export async function runOnce(
     let diffFiles: string[] = []
     let diffFull = ''
     try {
-      const { gitDiffNameOnly, gitDiffFull } = await import('../io/git')
       diffFiles = await gitDiffNameOnly({ cwd })
       diffFull = await gitDiffFull({ cwd, maxChars: 20000 })
     } catch {}
@@ -312,7 +310,6 @@ export async function runOnce(
       const v = verification || { lint: 'pass', typecheck: 'pass', tests: { passed: 0, failed: 0, coverage: 0 } }
       let acceptanceOk = true
       try {
-        const { readNextTaskAcceptanceCriteria } = await import('./progress')
         const criteria = await readNextTaskAcceptanceCriteria(cwd)
         if (criteria && criteria.length > 0) {
           if (!v.tests || (v.tests && v.tests.failed && v.tests.failed > 0)) acceptanceOk = false

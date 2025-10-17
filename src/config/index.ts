@@ -3,6 +3,7 @@ import path from 'path'
 // loadConfig removed - project config seeding uses ConfigSchema defaults when creating a new file
 import type { AppConfig } from './schema'
 import { ConfigSchema } from './schema'
+import { loadConfig } from './defaults'
 
 const CONFIG_NAME = 'config.json'
 
@@ -48,7 +49,6 @@ export async function getEffectiveConfig(
   env: Record<string, string | undefined> = {}
 ): Promise<AppConfig> {
   // Load env-based config tolerant (non-strict) from provided env map
-  const { loadConfig } = await import('./defaults')
   const envCfg = loadConfig(env)
 
   // Load (or seed) project config via ensureProjectConfig which returns the
@@ -60,7 +60,6 @@ export async function getEffectiveConfig(
   const merged: any = { ...envCfg, ...projectCfg }
   // Ensure result conforms to AppConfig shape by parsing defaults from schema
   try {
-    const { ConfigSchema } = await import('./schema')
     // parse will fill defaults for missing values
     return ConfigSchema.parse(merged) as AppConfig
   } catch {

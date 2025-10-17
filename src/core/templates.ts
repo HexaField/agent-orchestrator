@@ -2,6 +2,7 @@ import { marked } from 'marked'
 import type { NextTask } from '../types/models'
 import { genChangeLLM, genClarifyLLM, genContextLLM } from './generatorClient'
 import { readTemplateFileSync, renderTemplateSync } from './templateLoader'
+import { getEffectiveConfig } from '../config'
 
 export function genChecklist(spec: string): string[] {
   const text = spec || ''
@@ -32,7 +33,6 @@ export function genContext(spec?: string, cwd: string = process.cwd()): string {
 
 export async function genResponseType(): Promise<'patches' | 'files' | 'commands' | 'mixed'> {
   try {
-    const { getEffectiveConfig } = await import('../config')
     const cfg = await getEffectiveConfig(process.cwd())
     const r = cfg.RESPONSE_TYPE
     if (r === 'patches' || r === 'files' || r === 'commands' || r === 'mixed') return r
@@ -139,7 +139,6 @@ export function genNext(): NextTask {
 // Async LLM-backed wrappers (used when USE_LLM_GEN=1)
 export async function genContextAsync(spec?: string, cwd: string = process.cwd()): Promise<string> {
   try {
-    const { getEffectiveConfig } = await import('../config')
     const cfg = await getEffectiveConfig(cwd)
     if (!cfg || !cfg.USE_LLM_GEN) return genContext(spec, cwd)
     const provider = cfg.LLM_PROVIDER || 'ollama'
@@ -151,7 +150,6 @@ export async function genContextAsync(spec?: string, cwd: string = process.cwd()
 
 export async function genClarifyAsync(spec?: string, cwd: string = process.cwd()): Promise<string> {
   try {
-    const { getEffectiveConfig } = await import('../config')
     const cfg = await getEffectiveConfig(cwd)
     if (!cfg || !cfg.USE_LLM_GEN) return genClarify(spec, cwd)
     const provider = cfg.LLM_PROVIDER || 'ollama'
@@ -163,7 +161,6 @@ export async function genClarifyAsync(spec?: string, cwd: string = process.cwd()
 
 export async function genChangeAsync(spec?: string, reason?: string, cwd: string = process.cwd()): Promise<NextTask> {
   try {
-    const { getEffectiveConfig } = await import('../config')
     const cfg = await getEffectiveConfig(cwd)
     if (!cfg || !cfg.USE_LLM_GEN) return genChange(spec, reason, cwd)
     const provider = cfg.LLM_PROVIDER || 'ollama'

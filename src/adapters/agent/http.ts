@@ -1,3 +1,4 @@
+import { getEffectiveConfig } from '../../config'
 import type { AgentAdapter } from '../../types/adapters'
 
 export function createHttpAgent(): AgentAdapter {
@@ -7,7 +8,6 @@ export function createHttpAgent(): AgentAdapter {
       // Resolve endpoint strictly: prefer input.env, then project config.
       let endpoint = input.env && input.env['AGENT_HTTP_ENDPOINT']
       try {
-        const { getEffectiveConfig } = await import('../../config')
         const cfg = await getEffectiveConfig(input.cwd || '.')
         if (cfg && !endpoint) endpoint = (cfg as any).AGENT_HTTP_ENDPOINT
       } catch {}

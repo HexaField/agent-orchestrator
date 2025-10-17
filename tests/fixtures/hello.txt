@@ -1,6 +1,6 @@
 Hello world
 ```
-// File: tests/fixtures/cli/sum-lines.ts
+// File: tests/fixtures/sum-lines.ts
 export const sum = (a,b)=>a+b
 ```
 

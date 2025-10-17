@@ -3,6 +3,7 @@ import { execa } from 'execa'
 import path from 'path'
 import { writeChangelog } from '../../core/changelog'
 import { getState, setState } from '../../core/orchestrator'
+import { getEffectiveConfig } from '../../config'
 
 const commit = new Command('commit')
   .description('Generate changelog, commit changes, and optionally open PR')
@@ -18,13 +19,12 @@ const commit = new Command('commit')
     }
     const rel = await writeChangelog(cwd, opts.branch ?? 'task', 'Automated changelog')
     // Attempt a simple commit if in a git repo
-    try {
-      let dryRun = false
       try {
-        const { getEffectiveConfig } = await import('../../config')
-        const cfg = await getEffectiveConfig(cwd)
-        dryRun = Boolean(cfg && (cfg as any).DRY_RUN)
-      } catch {}
+        let dryRun = false
+        try {
+          const cfg = await getEffectiveConfig(cwd)
+          dryRun = Boolean(cfg && (cfg as any).DRY_RUN)
+        } catch {}
       // allow tests to short-circuit by setting VITEST/VITEST_WORKER_ID in process.env
       if (!(process.env.VITEST || process.env.VITEST_WORKER_ID || dryRun)) {
         await execa('git', ['add', '-A'], { cwd })
@@ -49,7 +49,6 @@ const commit = new Command('commit')
         process.env.VITEST_WORKER_ID ||
         (await (async () => {
           try {
-            const { getEffectiveConfig } = await import('../../config')
             const cfg = await getEffectiveConfig(process.cwd())
             return Boolean(cfg && (cfg as any).DRY_RUN)
           } catch {

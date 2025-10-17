@@ -10,6 +10,7 @@ import runCmd from './commands/run'
 import showRunCmd from './commands/show-run'
 import specToProgressCmd from './commands/spec-to-progress'
 import statusCmd from './commands/status'
+import { ensureProjectConfig } from '../config'
 
 const program = new Command()
 program.name('agent-orchestrator').description('Spec-driven coding-agent orchestrator CLI').version('0.1.0')
@@ -17,7 +18,6 @@ program.name('agent-orchestrator').description('Spec-driven coding-agent orchest
 // Ensure per-project config is present on any CLI invocation
 ;(async () => {
   try {
-    const { ensureProjectConfig } = await import('../config')
     await ensureProjectConfig(process.cwd())
   } catch {}
 })()

@@ -1,7 +1,9 @@
 import { Command } from 'commander'
 import path from 'path'
 import { getEffectiveConfig } from '../../config'
-import { runOnce } from '../../core/orchestrator'
+import { runOnce, getState } from '../../core/orchestrator'
+import { applyPatchesFromRun } from '../../core/patches'
+import { clarifyLastRun } from '../../core/clarifier'
 
 const run = new Command('run')
   .description('Run an agent iteration with current configuration')
@@ -27,15 +29,12 @@ const run = new Command('run')
     })
     if (opts.applyPatches) {
       try {
-        const { applyPatchesFromRun } = await import('../../core/patches')
         // read state to get current run id
-        const { getState } = await import('../../core/orchestrator')
         const st = await getState(cwd)
         if (st.currentRunId) {
           const res = await applyPatchesFromRun(cwd, st.currentRunId)
           if (!res.applied) {
             // in non-test runs, warn the user
-
             console.warn('Patches were not applied:', res.path)
           }
         }
@@ -45,10 +44,8 @@ const run = new Command('run')
     }
     // After runOnce, if clarifications are needed, synthesize and post them automatically
     try {
-      const { getState } = await import('../../core/orchestrator')
       const st = await getState(cwd)
       if (st && st.lastOutcome === 'needs_clarification') {
-        const { clarifyLastRun } = await import('../../core/clarifier')
         // approve so clarifications are treated like human-approved ones
         await clarifyLastRun(cwd, { approve: true })
       }

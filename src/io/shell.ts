@@ -1,5 +1,5 @@
 import { execa } from 'execa'
-// config helpers imported dynamically where needed
+import pty from 'node-pty'
 
 const REDACT_KEYS = ['TOKEN', 'KEY', 'SECRET', 'PASSWORD']
 
@@ -62,14 +62,7 @@ export async function runCommand(
       // wrapper (which uses stdio: 'inherit') sees a TTY. Fall back to execa
       // if PTY spawning fails for any reason.
       try {
-        // dynamic import so this file still works if node-pty isn't available
-        const pty = await import('node-pty')
         // Determine the spawn function across possible module shapes
-        const maybeDefault = (pty as any).default || pty
-        const spawnFn = (maybeDefault && (maybeDefault.spawn || maybeDefault)) || (pty as any).spawn
-        if (typeof spawnFn !== 'function') {
-          throw new Error('node-pty import did not expose a spawn function')
-        }
 
         console.error('debug: spawning codex in pty (node-pty detected)')
         return await new Promise<any>((resolve) => {
@@ -87,12 +80,12 @@ export async function runCommand(
             console.error('debug: pty env for codex', Object.fromEntries(Object.entries(env).slice(0, 30)))
           } catch {}
           // spawnFn may be the module itself or an object with spawn()
-          const p = spawnFn(cmd, args, {
+          const p = pty.spawn(cmd, args, {
             cwd: opts.cwd,
             env,
             cols,
             rows
-          })
+          }) as any // @todo fix types
 
           let buf = ''
           // stream out and capture

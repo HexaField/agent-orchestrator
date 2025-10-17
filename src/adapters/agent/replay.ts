@@ -1,5 +1,6 @@
 import fs from 'fs'
 import path from 'path'
+import { getEffectiveConfig } from '../../config'
 import type { AgentAdapter } from '../../types/adapters'
 
 export function createReplayAgent(): AgentAdapter {
@@ -11,7 +12,6 @@ export function createReplayAgent(): AgentAdapter {
       // prefer explicit per-invocation env override (REPLAY_FIXTURE), then project config, then default
       let fixture = String(input.env?.REPLAY_FIXTURE ?? '')
       try {
-        const { getEffectiveConfig } = await import('../../config')
         const cfg = await getEffectiveConfig(input.cwd || '.')
         if (cfg) {
           if (!fixture) fixture = String((cfg as any).REPLAY_FIXTURE ?? '')

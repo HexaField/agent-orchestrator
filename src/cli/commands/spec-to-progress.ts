@@ -3,6 +3,7 @@ import { readFileSync } from 'fs'
 import path from 'path'
 import { applyProgressPatch } from '../../core/progress'
 import { genUpdate } from '../../core/templates'
+import { genTodoListLLM } from '../../core/generatorClient'
 
 /**
  * CLI command: spec-to-progress
@@ -29,7 +30,6 @@ const specToProgress = new Command('spec-to-progress')
     // Optionally use LLM to generate a todo list and attach it as a checklist
     if (opts.useLlm) {
       try {
-        const { genTodoListLLM } = await import('../../core/generatorClient')
         const provider = 'ollama'
         const todos = await genTodoListLLM(provider, specText)
         if (Array.isArray(todos) && todos.length > 0) {

@@ -121,11 +121,14 @@ Words: 2
     // run which will invoke runOnce and the automated clarifier we added
     // Ensure project config uses the codex write-capable agent and desired LLM
     try {
-      await execa('node', ['-e', `require('fs').mkdirSync('${path.join(tmp, '.agent')}', { recursive: true }); require('fs').writeFileSync('${path.join(
-        tmp,
-        '.agent',
-        'config.json'
-      )}', JSON.stringify({ AGENT: 'codex', LLM_PROVIDER: 'ollama', LLM_MODEL: 'gpt-oss:20b' }, null, 2), 'utf8')`])
+      await execa('node', [
+        '-e',
+        `require('fs').mkdirSync('${path.join(tmp, '.agent')}', { recursive: true }); require('fs').writeFileSync('${path.join(
+          tmp,
+          '.agent',
+          'config.json'
+        )}', JSON.stringify({ AGENT: 'codex-cli', LLM_PROVIDER: 'ollama', LLM_MODEL: 'gpt-oss:20b' }, null, 2), 'utf8')`
+      ])
     } catch {}
 
     await execa('node', [npxBin, 'run', '--cwd', tmp], {

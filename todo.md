@@ -14,3 +14,5 @@ rethink this a bit
 - [ ] 'npx agent-orchestrator new' that takes a url or saved url to set up a new project
   - [ ] clones the file as AGENTS.md and then calls a meta-prompt to fill in the rest of the files according to the AGENTS.md spec
   - [ ] `--save https://path.to/file.md` option to save the url for future `new` commands when no url is provided
+
+- [ ] centralise all test artifacts to a single test-artifacts folder

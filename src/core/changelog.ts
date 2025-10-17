@@ -1,5 +1,7 @@
 import path from 'path'
 import { writeFileAtomic } from '../io/fs'
+import { readdir as readdirP, readFile as readFileP } from 'fs/promises'
+import { getEffectiveConfig } from '../config'
 
 export async function writeChangelog(cwd: string, task: string, content: string): Promise<string> {
   const ts = new Date().toISOString().replace(/[:]/g, '-')
@@ -10,12 +12,10 @@ export async function writeChangelog(cwd: string, task: string, content: string)
   let verification = ''
   try {
     const runsDir = path.join(lastRunPath, 'runs')
-    const runs = (await (await import('fs/promises')).readdir(runsDir)).filter((d) => d.startsWith('run-')).sort()
+    const runs = (await readdirP(runsDir)).filter((d) => d.startsWith('run-')).sort()
     const last = runs[runs.length - 1]
     if (last) {
-      const runJson = JSON.parse(
-        await (await import('fs/promises')).readFile(path.join(runsDir, last, 'run.json'), 'utf8')
-      )
+      const runJson = JSON.parse(await readFileP(path.join(runsDir, last, 'run.json'), 'utf8'))
       const runId = runJson.runId || last
       // build a compact verification summary
       const testsPassed = runJson.verification?.tests?.passed ?? 0
@@ -45,7 +45,6 @@ export async function writeChangelog(cwd: string, task: string, content: string)
   // use RUN_ID from project config when present
   let runIdHeader = ''
   try {
-    const { getEffectiveConfig } = await import('../config')
     const cfg = await getEffectiveConfig(process.cwd())
     if (cfg && (cfg as any).RUN_ID) runIdHeader = (cfg as any).RUN_ID
   } catch {}

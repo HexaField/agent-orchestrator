@@ -1,7 +1,7 @@
 import fs from 'fs'
 import os from 'os'
 import path from 'path'
-// ...config helpers are dynamically imported where needed
+import { getEffectiveConfig } from '../../config'
 import { runCommand } from '../../io/shell'
 import type { AgentAdapter } from '../../types/adapters'
 
@@ -12,7 +12,6 @@ export function createCodexCli(): AgentAdapter {
       // Prefer to run the `exec` subcommand which is the non-interactive one-shot mode
       let model = input.env?.LLM_MODEL
       try {
-        const { getEffectiveConfig } = await import('../../config')
         const cfg = await getEffectiveConfig(input.cwd || '.')
         if (cfg && cfg.LLM_MODEL) model = model || cfg.LLM_MODEL
       } catch {}
@@ -31,7 +30,6 @@ export function createCodexCli(): AgentAdapter {
       let cfgBase: string | undefined = undefined
       let cfgProvider: string | undefined = undefined
       try {
-        const { getEffectiveConfig } = await import('../../config')
         const cfg = await getEffectiveConfig(input.cwd || '.')
         if (cfg) {
           cfgBase = cfg.LLM_ENDPOINT
@@ -133,7 +131,6 @@ export function createCodexCli(): AgentAdapter {
         // compute debug flags from input.env or project config
         let debugCodeX = String(input.env?.DEBUG_CODEX ?? '')
         try {
-          const { getEffectiveConfig } = await import('../../config')
           const cfg = await getEffectiveConfig(input.cwd || '.')
           if (debugCodeX.trim() === '') debugCodeX = String((cfg as any).DEBUG_CODEX ?? '')
         } catch {}

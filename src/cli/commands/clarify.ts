@@ -1,5 +1,6 @@
 import { Command } from 'commander'
 import path from 'path'
+import { readFile } from 'fs/promises'
 import { setState } from '../../core/orchestrator'
 import { applyProgressPatch } from '../../core/progress'
 import { genClarifyAsync } from '../../core/templates'
@@ -22,7 +23,7 @@ const clarify = new Command('clarify')
     // generate clarifying questions based on spec
     let spec = ''
     try {
-      spec = await (await import('fs')).promises.readFile(path.join(cwd, 'spec.md'), 'utf8')
+      spec = await readFile(path.join(cwd, 'spec.md'), 'utf8')
     } catch {}
     const clar = await genClarifyAsync(spec)
     await applyProgressPatch(cwd, { clarifications: clar })
