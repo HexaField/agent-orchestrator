@@ -119,17 +119,59 @@ export async function runOnce(
     if (isSessionAgent) {
       // session-based flow
       const sessAgent = agent as any
-      const session = await sessAgent.startSession({ cwd, env: process.env })
+      const session = await sessAgent.startSession({ cwd, env: process.env, runId })
       try {
         const promptToSend = opts.prompt
           ? initialAgentPrompt
           : (await llm.generate({ prompt: llmPrompt, temperature: 0 })).text || initialAgentPrompt
-        // collect response by consuming the async iterable until it completes or times out
+        // collect response by consuming the async iterable of SessionEvents
         let stdout = ''
         try {
           for await (const ev of sessAgent.send(session, promptToSend)) {
             try {
-              stdout += typeof ev === 'string' ? ev : JSON.stringify(ev) + '\n'
+              if (!ev) continue
+              switch (ev.type) {
+                case 'ndjson':
+                  try {
+                    stdout += JSON.stringify(ev.json) + '\n'
+                  } catch {
+                    stdout += String(ev.json) + '\n'
+                  }
+                  break
+                case 'stdout':
+                  stdout += ev.text + '\n'
+                  break
+                case 'artifact':
+                  // append a short artifact marker to stdout for downstream extraction
+                  try {
+                    if (ev.path) stdout += `=== ${ev.path} ===\n` + (ev.content || '') + '\n'
+                    else stdout += '```\n' + (ev.content || '') + '\n```\n'
+                  } catch {}
+                  break
+                case 'clarify':
+                  // automated clarify: generate a short answer and send it back into the session
+                  try {
+                    const clar = await genClarifyAsync(specText, cwd)
+                    const assumptions = 'Assume reasonable defaults and proceed. Do not ask further questions.'
+                    const answer = clar + '\n' + assumptions
+                    // send clarification back into session
+                    try {
+                      // call send() again with the answer and consume resulting events
+                      for await (const ev2 of sessAgent.send(session, answer)) {
+                        if (!ev2) continue
+                        if (ev2.type === 'ndjson') stdout += JSON.stringify(ev2.json) + '\n'
+                        else if (ev2.type === 'stdout') stdout += ev2.text + '\n'
+                        else if (ev2.type === 'artifact') {
+                          if (ev2.path) stdout += `=== ${ev2.path} ===\n` + (ev2.content || '') + '\n'
+                          else stdout += '```\n' + (ev2.content || '') + '\n```\n'
+                        }
+                      }
+                    } catch {}
+                  } catch {}
+                  break
+                default:
+                  break
+              }
             } catch {}
           }
         } catch {}

@@ -7,7 +7,6 @@ export function createArtifactExtractor(sessionId: string, cwd: string) {
   const markers: Array<{ path: string; content: string }> = []
 
   const fenceRe = /```(?:ts|typescript|js|javascript)?\n([\s\S]*?)\n```/gim
-  // markerRe was replaced by a line-scan implementation
   const patchRe = /(^diff --git |^@@ )/m
 
   function process(ev: any) {
@@ -17,7 +16,6 @@ export function createArtifactExtractor(sessionId: string, cwd: string) {
         combined += ev + '\n'
         return
       }
-      // JSON object: try common fields
       if (typeof ev === 'object') {
         if (typeof ev.aggregated_output === 'string') combined += ev.aggregated_output + '\n'
         if (typeof ev.response === 'string') combined += ev.response + '\n'
@@ -33,17 +31,14 @@ export function createArtifactExtractor(sessionId: string, cwd: string) {
       const outDir = path.join(cwd || '.', '.agent', 'runs')
       fs.mkdirSync(outDir, { recursive: true })
       const pth = path.join(outDir, `${sessionId}.patches.diff`)
-      // persist combined text
       fs.writeFileSync(pth, combined, 'utf8')
 
-      // if contains a git-style patch, also write codex-generated.patch
       if (patchRe.test(combined)) {
         try {
           fs.writeFileSync(path.join(outDir, `${sessionId}.codex-generated.patch`), combined, 'utf8')
         } catch {}
       }
 
-      // extract marker-style files using a line-scan to be more robust
       try {
         const lines = combined.split(/\r?\n/)
         const headerRe = /^===\s*(.+?)\s*===$/
@@ -71,8 +66,7 @@ export function createArtifactExtractor(sessionId: string, cwd: string) {
         }
       } catch {}
 
-      // extract fenced code blocks into guessed files if they contain a File header
-      let fm
+      let fm: RegExpExecArray | null
       while ((fm = fenceRe.exec(combined))) {
         try {
           let content = fm[1]
@@ -80,9 +74,8 @@ export function createArtifactExtractor(sessionId: string, cwd: string) {
           const fileHeader = firstLine.match(/^\/\/\s*File:\s*(.+)$/i)
           if (fileHeader && fileHeader[1]) {
             const rel = fileHeader[1].trim()
-            // strip header
             content = content.replace(
-              new RegExp('^' + firstLine.replace(/[.*+?^${}()|[\\]\\]/g, '\\\$&') + '\\r?\\n'),
+              new RegExp('^' + firstLine.replace(/[.*+?^${}()|[\\]\\]/g, '\\$&') + '\\r?\\n'),
               ''
             )
             const abs = path.join(cwd || '.', rel)
@@ -92,7 +85,11 @@ export function createArtifactExtractor(sessionId: string, cwd: string) {
           fences.push(fm[1])
         } catch {}
       }
-    } catch {}
+
+      return { markers, fences, combined }
+    } catch {
+      return { markers, fences, combined }
+    }
   }
 
   return { process, finalize }

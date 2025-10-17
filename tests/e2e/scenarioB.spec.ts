@@ -1,5 +1,5 @@
 import { execa } from 'execa'
-import { mkdtempSync, readFileSync, writeFileSync, existsSync, readdirSync, statSync } from 'fs'
+import { existsSync, mkdtempSync, readdirSync, readFileSync, statSync, writeFileSync } from 'fs'
 import os from 'os'
 import path from 'path'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
@@ -44,13 +44,15 @@ describe('E2E Scenario B (needs clarification loop)', () => {
     const state = JSON.parse(readFileSync(path.join(cwd, '.agent', 'state.json'), 'utf8'))
     expect(state.status).toBe('needs_clarification')
 
-  // ensure run artifacts present for debugging and replay
-  const runsDir = path.join(cwd, '.agent', 'runs')
-  expect(existsSync(runsDir)).toBe(true)
-  const runs = existsSync(runsDir) ? readdirSync(runsDir).filter((name) => statSync(path.join(runsDir, name)).isDirectory()) : []
-  expect(runs.length).toBeGreaterThan(0)
-  const latest = runs.sort().reverse()[0]
-  const runJsonPath = path.join(runsDir, latest, 'run.json')
-  expect(existsSync(runJsonPath)).toBe(true)
+    // ensure run artifacts present for debugging and replay
+    const runsDir = path.join(cwd, '.agent', 'runs')
+    expect(existsSync(runsDir)).toBe(true)
+    const runs = existsSync(runsDir)
+      ? readdirSync(runsDir).filter((name) => statSync(path.join(runsDir, name)).isDirectory())
+      : []
+    expect(runs.length).toBeGreaterThan(0)
+    const latest = runs.sort().reverse()[0]
+    const runJsonPath = path.join(runsDir, latest, 'run.json')
+    expect(existsSync(runJsonPath)).toBe(true)
   })
 })

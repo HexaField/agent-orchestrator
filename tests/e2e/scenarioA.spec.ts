@@ -1,5 +1,5 @@
 import { execa } from 'execa'
-import { mkdtempSync, readFileSync, writeFileSync, existsSync, readdirSync, statSync } from 'fs'
+import { existsSync, mkdtempSync, readdirSync, readFileSync, statSync, writeFileSync } from 'fs'
 import os from 'os'
 import path from 'path'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
@@ -52,7 +52,9 @@ describe('E2E Scenario A (happy path)', () => {
     const agentDir = path.join(cwd, '.agent')
     const runsDir = path.join(agentDir, 'runs')
     expect(existsSync(runsDir)).toBe(true)
-    const runs = existsSync(runsDir) ? readdirSync(runsDir).filter((name) => statSync(path.join(runsDir, name)).isDirectory()) : []
+    const runs = existsSync(runsDir)
+      ? readdirSync(runsDir).filter((name) => statSync(path.join(runsDir, name)).isDirectory())
+      : []
     expect(runs.length).toBeGreaterThan(0)
     const latest = runs.sort().reverse()[0]
     const runJsonPath = path.join(runsDir, latest, 'run.json')

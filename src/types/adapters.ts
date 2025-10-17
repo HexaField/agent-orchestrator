@@ -25,11 +25,19 @@ export interface SessionHandle {
   meta?: Record<string, unknown>
 }
 
+export type SessionEvent =
+  | { type: 'stdout'; text: string }
+  | { type: 'ndjson'; json: any }
+  | { type: 'clarify'; question: string }
+  | { type: 'artifact'; path?: string; content?: string }
+  | { type: 'finish'; exitCode?: number }
+  | { type: 'error'; message: string }
+
 export interface SessionAgentAdapter extends AgentAdapter {
   /** Start a long-lived interactive session. */
-  startSession?(input: { cwd: string; env?: Record<string, string> }): Promise<SessionHandle>
-  /** Send a message into the session; returns an async iterable of parsed NDJSON events (or raw lines). */
-  send?(session: SessionHandle, message: string): AsyncIterable<unknown>
+  startSession?(input: { cwd: string; env?: Record<string, string>; runId?: string }): Promise<SessionHandle>
+  /** Send a message into the session; returns an async iterable of SessionEvent. */
+  send?(session: SessionHandle, message: string): AsyncIterable<SessionEvent>
   /** Close the session and release resources. */
   closeSession?(session: SessionHandle): Promise<void>
 }

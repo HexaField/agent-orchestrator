@@ -1,6 +1,6 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest'
 import fs from 'fs'
 import path from 'path'
+import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { createArtifactExtractor } from '../../src/adapters/agent/artifactExtractor'
 
 const TMP = path.join(process.cwd(), 'tests', '.agent', 'runs')
@@ -20,7 +20,9 @@ describe('artifact extractor', () => {
     const extractor = createArtifactExtractor(sessionId, process.cwd())
     // simulate NDJSON objects with aggregated_output and raw diff
     extractor.process({ aggregated_output: 'Some summary' })
-    extractor.process('diff --git a/foo b/foo\nindex 000..111\n--- a/foo\n+++ b/foo\n@@ -1 +1 @@\n-hello\n+hello world\n')
+    extractor.process(
+      'diff --git a/foo b/foo\nindex 000..111\n--- a/foo\n+++ b/foo\n@@ -1 +1 @@\n-hello\n+hello world\n'
+    )
     extractor.finalize()
 
     const pth = path.join(process.cwd(), '.agent', 'runs', `${sessionId}.patches.diff`)
