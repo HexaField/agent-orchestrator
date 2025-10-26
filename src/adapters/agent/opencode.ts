@@ -1,7 +1,8 @@
 import { createOpencodeClient } from '@opencode-ai/sdk'
 import { spawn } from 'child_process'
+import { AgentAdapter } from './interface'
 
-export async function createOpenCodeAgentAdapter(port: number, projectPath: string) {
+export async function createOpenCodeAgentAdapter(port: number, projectPath: string): Promise<AgentAdapter> {
   // I can't figure out how to start open-code server in a specific path, so
   // we will use the CLI to start the server in the desired directory.
   const process = spawn(`cd ${projectPath} && opencode serve --port ${port}`, {
@@ -36,7 +37,6 @@ export async function createOpenCodeAgentAdapter(port: number, projectPath: stri
       const session = await client.session.create({
         body: { title: 'My session' }
       })
-      const project = await client.project.current()
 
       if (session.error) {
         const message = (session.error.data as any)?.message || 'Unknown error'
@@ -58,7 +58,7 @@ export async function createOpenCodeAgentAdapter(port: number, projectPath: stri
         const message = (result.error.data as any)?.message || 'Unknown error'
         throw new Error('Failed to run prompt' + message)
       }
-      return result.data.parts.find((part) => part.type === 'text')?.text
+      return { text: result.data.parts.find((part) => part.type === 'text')?.text! }
     },
     stop: async () => {
       process.kill(0)

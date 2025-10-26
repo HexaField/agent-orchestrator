@@ -32,38 +32,24 @@ This phase deliberately keeps UX, persistence, and multi-run orchestration minim
 The plan below includes concise TypeScript-style interface sketches that should be implemented in `src/adapters/*/interface.ts` files. Keep these contracts small and well-typed.
 
 - AgentAdapter (contract sketch)
-
   - Inputs: session configuration, prompt text, limits
   - Outputs: structured response (text + optional parsed tasks), sessionId, status
 
   Contract example (to be implemented in-source):
 
-  interface AgentAdapter {
-    startSession(options: { title?: string; projectPath: string }): Promise<string>
-    run(sessionId: string, input: string): Promise<{ text: string; tasks?: any[] }>
-    stop(): Promise<void>
-  }
+  interface AgentAdapter { startSession(options: { title?: string; projectPath: string }): Promise<string> run(sessionId: string, input: string): Promise<{ text: string; tasks?: any[] }> stop(): Promise<void> }
 
 - LLMAdapter (contract sketch)
-
   - Inputs: messages (system/user), optional context ids
   - Outputs: { text, tokensUsed?, citations? }
 
-  interface LLMAdapter {
-    call(messages: Array<{role: 'system'|'user'|'assistant'; content: string}>, opts?: {maxTokens?: number}): Promise<{text: string; tokensUsed?: number; citations?: any[]}>
-  }
+  interface LLMAdapter { call(messages: Array<{role: 'system'|'user'|'assistant'; content: string}>, opts?: {maxTokens?: number}): Promise<{text: string; tokensUsed?: number; citations?: any[]}> }
 
 - TaskLoop (contract sketch)
-
   - Inputs: compiled prompt(s), adapters, run options
   - Outputs: step records, run summary, diffs/provenance
 
-  interface TaskLoopResult {
-    runId: string
-    steps: Array<{id: string; adapter: string; input: any; output: any; applied?: boolean; provenance?: any}>
-    summary: {success: boolean; errors?: string[]}
-    artifactsPath: string // e.g. .agent/run/<id>
-  }
+  interface TaskLoopResult { runId: string steps: Array<{id: string; adapter: string; input: any; output: any; applied?: boolean; provenance?: any}> summary: {success: boolean; errors?: string[]} artifactsPath: string // e.g. .agent/run/<id> }
 
   type TaskLoop = (opts: {spec: string; agent: AgentAdapter; llm: LLMAdapter; workDir: string; limits?: any}) => Promise<TaskLoopResult>
 
@@ -125,23 +111,23 @@ Test examples (conceptual):
 
 These are suggested commands you can run during development. They assume you are in the repo root and have Node + npm installed.
 
-1) Install dependencies
+1. Install dependencies
 
 ```bash
 npm install
 ```
 
-2) Run unit tests (fast)
+2. Run unit tests (fast)
 
 ```bash
 npm test -- --watchAll=false
 ```
 
-3) Run E2E with real providers (optional, gated)
+3. Run E2E with real providers (optional, gated)
 
 Always run the real providers.
 
-4) Inspect a run artifact
+4. Inspect a run artifact
 
 After a successful run the TaskLoop writes to `.agent/run/<id>/`; open `provenance/` inside that directory to inspect JSON provenance files and `applied/` for changed files.
 
@@ -164,8 +150,7 @@ For each gate above, the test harness should return PASS or FAIL and any failing
 
 - [x] Draft plan and scope (this file)
 - [x] Add `opencode.ts` (agent adapter) — (already implemented)
-- [ ] Add unit tests for `opencode.ts` and mock client
-- [ ] Add `llm` adapters and tests
+- [x] Add `llm` adapters and tests
 - [ ] Implement `TaskLoop` with provenance writing
 - [ ] Add E2E test that writes `.agent/run/<id>/`
 - [ ] Run quality gates and iterate until PASS

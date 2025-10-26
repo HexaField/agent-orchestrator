@@ -14,8 +14,6 @@
 export interface AgentStartOptions {
   /** Human-friendly title for the session (optional) */
   title?: string
-  /** Absolute path to the project/workDir the agent will operate on */
-  projectPath: string
   /** Optional runtime limits (tokens, timeouts, etc.) */
   limits?: {
     maxIterations?: number

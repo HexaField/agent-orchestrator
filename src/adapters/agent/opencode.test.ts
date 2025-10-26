@@ -2,6 +2,7 @@ import { exec } from 'child_process'
 import fs from 'fs'
 import path from 'path'
 import { afterAll, beforeAll, describe, expect, test } from 'vitest'
+import { AgentAdapter } from './interface'
 import { createOpenCodeAgentAdapter } from './opencode'
 
 const execPromise = (cmd: string) => {
@@ -21,7 +22,7 @@ const tmpdir = path.join(pwd, '/.tmp/' + Date.now().toString())
 fs.mkdirSync(tmpdir, { recursive: true })
 
 describe('OpenCode Agent Adapter (SDK integration)', () => {
-  let adapter: Awaited<ReturnType<typeof createOpenCodeAgentAdapter>>
+  let adapter: AgentAdapter
 
   beforeAll(async () => {
     // ensure port is free
@@ -36,7 +37,7 @@ describe('OpenCode Agent Adapter (SDK integration)', () => {
   })
 
   test('should run a basic OpenCode agent flow', async () => {
-    const sessionId = await adapter.startSession()
+    const sessionId = await adapter.startSession({})
     expect(sessionId).toBeDefined()
     const result = (await adapter.run(sessionId, 'What is the current working directory?'))!
     console.log(`Agent response: "${result}"`)
