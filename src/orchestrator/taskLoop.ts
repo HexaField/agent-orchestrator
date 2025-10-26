@@ -2,7 +2,7 @@ import fs from 'fs'
 import path from 'path'
 import { AgentAdapter } from '../adapters/agent/interface'
 import { LLMAdapter, Message } from '../adapters/llm/interface'
-import analyzeIteration, { FeedbackReport } from './feedback'
+import analyzeIteration from './feedback'
 
 export type TaskLoopOpts = {
   task: string
@@ -115,23 +115,15 @@ export async function runTaskLoop(opts: TaskLoopOpts): Promise<TaskLoopResult> {
       const llmRes = await llm.call(llmMessages, { maxTokens: 16 })
       steps.push({ id: `l-${i}`, iteration: i, adapter: 'llm', input: llmMessages, output: llmRes })
 
-      // If feedback is enabled, ask the feedback engine to produce a structured report
-      let feedback: FeedbackReport | undefined
-      if (opts.enableFeedback !== false) {
-        try {
-          feedback = await analyzeIteration({ llm, runId, iteration: i, task, agentOutput: agentRes })
-          steps.push({ id: `f-${i}`, iteration: i, adapter: 'feedback', input: { agent: agentRes }, output: feedback })
+      const feedback = await analyzeIteration({ llm, runId, iteration: i, task, agentOutput: agentRes })
+      steps.push({ id: `f-${i}`, iteration: i, adapter: 'feedback', input: { agent: agentRes }, output: feedback })
 
-          // persist feedback to provenance
-          fs.writeFileSync(
-            path.join(provenanceDir, `${i.toString().padStart(3, '0')}-feedback.json`),
-            JSON.stringify(sanitizeOutput(feedback), null, 2),
-            'utf8'
-          )
-        } catch (e) {
-          // ignore feedback failures and fall back to yes/no judge
-        }
-      }
+      // persist feedback to provenance
+      fs.writeFileSync(
+        path.join(provenanceDir, `${i.toString().padStart(3, '0')}-feedback.json`),
+        JSON.stringify(sanitizeOutput(feedback), null, 2),
+        'utf8'
+      )
 
       const normalized = (llmRes.text || '').trim().toLowerCase()
       const isYes =
