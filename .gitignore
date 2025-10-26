@@ -1,0 +1,10 @@
+.agent/
+node_modules/
+dist/
+test/tmp/
+node_modules
+.agent/
+package-lock.json
+.DS_Store
+.github/prompts
+.tmp/
