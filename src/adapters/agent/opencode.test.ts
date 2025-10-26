@@ -40,9 +40,11 @@ describe('OpenCode Agent Adapter (SDK integration)', () => {
     const sessionId = await adapter.startSession({})
     expect(sessionId).toBeDefined()
     const result = (await adapter.run(sessionId, 'What is the current working directory?'))!
-    console.log(`Agent response: "${result}"`)
+    console.log(`Agent response: "${JSON.stringify(result)}"`)
 
     expect(result).toBeDefined()
-    expect(result).toContain(tmpdir)
-  })
+    // adapter.run returns an object { text: string }
+    expect(result.text).toBeDefined()
+    expect(result.text).toContain(tmpdir)
+  }, 120000)
 })
