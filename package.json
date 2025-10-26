@@ -7,7 +7,7 @@
     "build": "node ./scripts/build.mjs",
     "start": "node ./dist/cli/index.js",
     "dev": "ts-node-esm src/cli/index.ts",
-    "format": "prettier --write ./src/**/*.ts ./test/**/*.ts",
+    "format": "prettier --write .",
     "test": "vitest run"
   },
   "devDependencies": {

@@ -1,31 +1,53 @@
 import { createOpencodeClient } from '@opencode-ai/sdk'
-import { spawn } from 'child_process'
+import { ChildProcess, spawn } from 'child_process'
 import { AgentAdapter } from './interface'
 
 export async function createOpenCodeAgentAdapter(port: number, projectPath: string): Promise<AgentAdapter> {
   // I can't figure out how to start open-code server in a specific path, so
   // we will use the CLI to start the server in the desired directory.
-  const process = spawn(`cd ${projectPath} && opencode serve --port ${port}`, {
+  const serverProcess: ChildProcess = spawn(`cd ${projectPath} && opencode serve --port ${port}`, {
     shell: true,
     stdio: ['ignore', 'pipe', 'pipe']
   })
 
-  process.on('close', (code) => {
+  // detach so the child runs in its own process group; this allows killing the group later
+  try {
+    serverProcess.unref?.()
+  } catch (e) {
+    // ignore if unref not available
+  }
+
+  serverProcess.on('close', (code) => {
     if (code !== 0) {
-      throw new Error(`Command failed with exit code ${code}`)
+      console.error(`opencode process exited with code ${code}`)
     }
   })
 
   // wait for server to output that it's ready
   const readyString = `opencode server listening on http://127.0.0.1:${port}`
 
-  await new Promise<void>((resolve) => {
-    process.stdout.on('data', (data) => {
-      console.log(data.toString())
-      if (data.toString().includes(readyString)) {
+  await new Promise<void>((resolve, reject) => {
+    const onData = (data: any) => {
+      const s = data.toString()
+      console.log(s)
+      if (s.includes(readyString)) {
+        cleanup()
         resolve()
       }
-    })
+    }
+
+    const onError = (err: any) => {
+      cleanup()
+      reject(err)
+    }
+
+    function cleanup() {
+      serverProcess.stdout?.off('data', onData)
+      serverProcess.stderr?.off('data', onError)
+    }
+
+    serverProcess.stdout?.on('data', onData)
+    serverProcess.stderr?.on('data', onError)
   })
 
   const client = await createOpencodeClient({
@@ -61,7 +83,29 @@ export async function createOpenCodeAgentAdapter(port: number, projectPath: stri
       return { text: result.data.parts.find((part) => part.type === 'text')?.text! }
     },
     stop: async () => {
-      process.kill(0)
+      return new Promise<void>((resolve) => {
+        try {
+          // kill the whole process group to ensure underlying server is terminated
+          if (serverProcess.pid) {
+            try {
+              process.kill(-serverProcess.pid, 'SIGTERM')
+            } catch (err) {
+              // fallback to killing the direct child
+              serverProcess.kill('SIGTERM')
+            }
+          } else {
+            serverProcess.kill('SIGTERM')
+          }
+        } catch (err) {
+          // ignore
+        }
+        // wait for close event or timeout
+        const to = setTimeout(() => resolve(), 3000)
+        serverProcess.once('close', () => {
+          clearTimeout(to)
+          resolve()
+        })
+      })
     }
   }
 }
