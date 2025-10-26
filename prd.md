@@ -46,7 +46,7 @@ The Agent Orchestrator is a context-aware system that plans, composes, executes,
 
 1. Initialization — Establish Working Universe
 
-- Read initiating files (e.g., spec.md, progress.md) when present.
+- Read initiating files (e.g., spec.md, progress.json) when present.
 - Create `.agent/` directory structure for runs, memory, and artifacts.
 - Index the repository for search/retrieval.
 - Connect to configured LLM(s) and Knowledge Management System (KMS) through interchangeable adapters.

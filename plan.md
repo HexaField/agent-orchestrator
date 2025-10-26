@@ -4,7 +4,7 @@
 
 At this stage, the system builds a foundation of understanding:
 
-- **Project Scope:** Reads `spec.md`, `progress.md`, or any initiating specification file.
+- **Project Scope:** Reads `spec.md`, `progress.json`, or any initiating specification file.
 - **Environment Setup:** Creates the `.agent/` directory, indexes the repo, and connects to your local LLM and KMS sources.
 - **Identity & Role Context:** Determines which roles (e.g., backend implementer, verifier) are relevant for this run.
 - **Persistent Memory:** Loads summaries from previous runs, long-term lessons, and any relevant standards.

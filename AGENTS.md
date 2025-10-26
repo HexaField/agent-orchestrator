@@ -2,4 +2,3 @@
 - Write small composable & modular pieces of code
 - Make code that is easily testable, and do not put test-specific code paths in the implementation
 - All APIs must have clear and concise JSDoc annotations
-- Check off each item in the current phase checklist in as you complete them
