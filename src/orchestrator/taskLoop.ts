@@ -2,6 +2,7 @@ import fs from 'fs'
 import path from 'path'
 import { AgentAdapter } from '../adapters/agent/interface'
 import { LLMAdapter, Message } from '../adapters/llm/interface'
+import analyzeIteration, { FeedbackReport } from './feedback'
 
 export type TaskLoopOpts = {
   task: string
@@ -9,12 +10,14 @@ export type TaskLoopOpts = {
   llm: LLMAdapter
   workDir: string
   maxIterations?: number
+  enableFeedback?: boolean
+  enableAutoSteer?: boolean
 }
 
 export type TaskLoopStep = {
   id: string
   iteration: number
-  adapter: 'agent' | 'llm'
+  adapter: 'agent' | 'llm' | 'feedback'
   input: any
   output: any
 }
@@ -114,8 +117,30 @@ export async function runTaskLoop(opts: TaskLoopOpts): Promise<TaskLoopResult> {
       const llmRes = await llm.call(llmMessages, { maxTokens: 16 })
       steps.push({ id: `l-${i}`, iteration: i, adapter: 'llm', input: llmMessages, output: llmRes })
 
+      // If feedback is enabled, ask the feedback engine to produce a structured report
+      let feedback: FeedbackReport | undefined
+      if (opts.enableFeedback !== false) {
+        try {
+          feedback = await analyzeIteration({ llm, runId, iteration: i, task, agentOutput: agentRes })
+          steps.push({ id: `f-${i}`, iteration: i, adapter: 'feedback', input: { agent: agentRes }, output: feedback })
+
+          // persist feedback to provenance
+          fs.writeFileSync(
+            path.join(provenanceDir, `${i.toString().padStart(3, '0')}-feedback.json`),
+            JSON.stringify(sanitizeOutput(feedback), null, 2),
+            'utf8'
+          )
+        } catch (e) {
+          // ignore feedback failures and fall back to yes/no judge
+        }
+      }
+
       const normalized = (llmRes.text || '').trim().toLowerCase()
-      const isYes = normalized.startsWith('yes') || normalized === 'y' || normalized.includes('yes')
+      const isYes =
+        (feedback && feedback.verdict === 'complete') ||
+        normalized.startsWith('yes') ||
+        normalized === 'y' ||
+        normalized.includes('yes')
 
       // persist step file for inspection (legacy placement)
       const stepFile = path.join(runDir, `${i.toString().padStart(3, '0')}.json`)
