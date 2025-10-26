@@ -1,38 +1,36 @@
-import { exec } from 'child_process'
 import fs from 'fs'
 import path from 'path'
-import { afterAll, beforeAll, describe, expect, test } from 'vitest'
+import { afterEach, beforeEach, describe, expect, test } from 'vitest'
 import { AgentAdapter } from './interface'
 import { createOpenCodeAgentAdapter } from './opencode'
 
-const execPromise = (cmd: string) => {
-  return new Promise<void>((resolve, reject) => {
-    exec(cmd, (error, stdout, stderr) => {
-      if (error) {
-        reject(error)
-        return
-      }
-      resolve()
-    })
-  })
-}
-
-const pwd = process.cwd()
-const tmpdir = path.join(pwd, '/.tmp/' + Date.now().toString())
-fs.mkdirSync(tmpdir, { recursive: true })
-
 describe('OpenCode Agent Adapter (SDK integration)', () => {
   let adapter: AgentAdapter
+  let tmpdir: string
 
-  beforeAll(async () => {
-    // ensure port is free
+  beforeEach(async () => {
+    const pwd = process.cwd()
+    tmpdir = path.join(pwd, '/.tmp/' + Date.now().toString())
+    fs.mkdirSync(tmpdir, { recursive: true })
 
-    await execPromise(`lsof -ti:3780 | xargs kill -9 || echo "port free"`)
+    // pick a free port for this test run to avoid collisions when tests run in parallel
+    const getFreePort = (): Promise<number> =>
+      new Promise((resolve, reject) => {
+        const net = require('net')
+        const s = net.createServer()
+        s.unref()
+        s.on('error', reject)
+        s.listen(0, () => {
+          const port = (s.address() as any).port
+          s.close(() => resolve(port))
+        })
+      })
 
-    adapter = await createOpenCodeAgentAdapter(3780, tmpdir)
+    const port = await getFreePort()
+    adapter = await createOpenCodeAgentAdapter(port, tmpdir)
   })
 
-  afterAll(async () => {
+  afterEach(async () => {
     await adapter.stop()
   })
 
@@ -47,4 +45,22 @@ describe('OpenCode Agent Adapter (SDK integration)', () => {
     expect(result.text).toBeDefined()
     expect(result.text).toContain(tmpdir)
   }, 120000)
+
+  test('should be able to write files via the agent', async () => {
+    const sessionId = await adapter.startSession({})
+    expect(sessionId).toBeDefined()
+    const filePath = path.join(tmpdir, 'agent-written-file.txt')
+    const writeCommand = `Please create a file at path "${filePath}" with the content "Hello, OpenCode!"`
+
+    const writeResult = await adapter.run(sessionId, writeCommand)
+    console.log(`Agent write response: "${JSON.stringify(writeResult)}"`)
+
+    expect(writeResult).toBeDefined()
+    expect(writeResult.text).toBeDefined()
+    expect(writeResult.text.toLowerCase()).toContain('created')
+
+    // verify the file was actually created with the expected content
+    const fileContent = fs.readFileSync(filePath, 'utf-8')
+    expect(fileContent).toBe('Hello, OpenCode!')
+  }, 150000)
 })

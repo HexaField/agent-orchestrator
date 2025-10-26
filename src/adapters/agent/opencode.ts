@@ -55,7 +55,7 @@ export async function createOpenCodeAgentAdapter(port: number, projectPath: stri
   })
 
   return {
-    startSession: async () => {
+    startSession: async (_options) => {
       const session = await client.session.create({
         body: { title: 'My session' }
       })
