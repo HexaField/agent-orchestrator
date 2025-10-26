@@ -1,124 +1,137 @@
-# Phase 7 Implementation Plan — Acceptance-Criteria Mapping, Reviewer Reports & Cross-Run Orchestration
+# Phase 6 Implementation Plan — Web UI, Diff Analysis & Session Resumability
 
 Status: Draft
 
 ## Scope
 
-Phase 7 implements a bidirectional mapping between acceptance criteria and verification functions, improves reviewer-oriented reports and approval metadata, and adds cross-run orchestration capabilities (aggregation, promotion, and dependency wiring across runs). This phase strengthens correctness guarantees and reviewer workflows.
+Phase 6 delivers a lightweight web UI for reviewers and operators, a robust diff-analysis subsystem to detect scope creep or unrelated edits, and session persistence/resumability so interrupted runs can be restored and continued with full provenance.
 
 In-scope:
 
-- A verification rule registry and acceptance-criteria DSL that maps human-readable acceptance criteria to executable verification functions.
-- A richer report schema oriented at reviewers with approval metadata, traceability, and remediation hints.
-- Cross-run orchestration primitives: run aggregation, promotion of artifacts between runs, and linking dependent runs without scheduling semantics.
-- Tests and end-to-end examples that exercise mapping from criteria → verification → report → reviewer decision.
+- A minimal, server-backed web UI serving statically-rendered run reports and interactive review workflows.
+- Diff analysis engine for scope creep detection (heuristics, metrics, configurable thresholds).
+- Durable session checkpointing and resumability APIs that restore a run to an in-memory or on-disk state across process crashes or machine reboots.
+- Integration points between the UI, Review Gate, and `progress.json` to present actionable diffs and allow reviewer actions from the browser.
+- Unit and integration tests for the UI endpoints, diff analysis heuristics, and resume behavior.
 
 ## Objectives
 
-- Define an acceptance-criteria schema and a registry where each criterion binds to one or more verification functions (commands or adapters).
-- Provide tooling to author and validate acceptance criteria and to auto-generate the verification plan used by `VerificationEngine`.
-- Produce reviewer-oriented reports that include approval metadata, remediation guidance, and end-to-end traceability to prompts and provenance.
-- Implement cross-run orchestration APIs to link runs, collect roll-up reports, and promote artifacts (e.g., a verified patch) from one run to another.
+- Provide a web UI that makes run artifacts, diffs, provenance, and review state easy to inspect and act upon.
+- Build a diff-analysis module that computes measurable metrics (files changed, insertions/deletions, entropy, touched modules, unexpected paths) and flags edits that look out-of-scope.
+- Implement session persistence (checkpoint snapshots and a resume API) so TaskLoop sessions can be paused and resumed with consistent provenance, locks, and conflict handling.
+- Wire UI actions (approve/comment/request-changes) back into `progress.json` consistently and securely.
 
-## Acceptance-Criteria → Verification mapping
+## Web UI — minimal design and contract
 
-Design goals:
+Purpose: provide a reviewer-friendly surface that exposes run summaries, per-task diffs, verification outputs, provenance links, and reviewer actions.
 
-- Make acceptance criteria declarative and human-readable while being mappable to executable checks.
-- Support simple criteria (e.g., `lint:pass`) and composed criteria (e.g., `allOf(lint:pass, tests:coverage>80)`).
+Architecture:
 
-Schema (conceptual JSON-like):
+- A small Node/Express (or equivalent) HTTP server that serves:
+  - Static assets (React/Preact/VanillaJS small app) for the interactive UI
+  - REST API endpoints for run artifacts, `progress.json`, provenance, and reviewer actions
+  - Optional authentication middleware (token-based) for protected access
 
-```json
-{
-  "id": "criterion-id",
-  "description": "Must pass TypeScript compile",
-  "type": "command|script|verifier",
-  "verifier": { "adapter": "exec", "cmd": "npm run build --silent" },
-  "onFailure": { "severity": "block|warn", "message": "Type errors present" }
-}
-```
+Key pages/endpoints:
 
-Registry & runtime:
+- `/runs` — list recent runs with status, runId, createdAt, phase, summary
+- `/run/<id>` — run dashboard: summary, steps, verification overview, changelog link
+- `/run/<id>/task/<taskId>` — task detail: unified diff, verification outputs, provenance, reviewer comments, approve/request-changes UI
+- `/run/<id>/artifacts/*` — serves run artifacts (report.md, summary.json, provenance files)
 
-- A `VerifierRegistry` stores named verifiers (shell commands, Node-based checks, or adapter-backed checks) and exposes `planForCriteria(criteria[])` which emits a verification plan for `VerificationEngine` to run.
-- Verification functions return structured results: { name, status, outputPath, durationMs, metadata } and are storable as provenance artifacts.
+API contract (selected):
 
-Authoring & validation:
+- GET `/api/runs` → list of runs
+- GET `/api/run/:id/progress` → `progress.json`
+- POST `/api/run/:id/task/:taskId/review` { action: 'approve'|'request_changes'|'comment', notes?: string } → updates `progress.json` and writes an audit entry to `progress.log`
 
-- Provide a small CLI `agent-orchestrator verify:compile --criteria file.json` that validates criteria schema and simulates the verification plan (dry run).
+Security & access control:
 
-## Reviewer-oriented reports & approval metadata
+- Add pluggable middleware to allow OAuth token, static API key, or local-CLI-signed tokens.
+- Ensure reviewer actions are authenticated and included in the audit trail (by `by` and `at` fields in `progress.json`).
 
-Purpose: make it effortless for reviewers to understand the rationale, evidence, and approvals for each change.
+UI UX notes:
 
-Report schema additions:
+- Prioritize concise diffs with file-level grouping and expandable hunks.
+- Surface diff-analysis flags prominently (e.g., "scope-alert: touched packages outside spec"), with links to the heuristic that raised it.
 
-- `approval` block: who approved what and when, with optional reviewer roles (e.g., `security`, `tech-lead`).
-- `remediationHints`: structured suggestions returned when checks fail (e.g., `run: npm run lint` or `files: src/foo.ts`).
-- `trace` entries: pointers from report sections back to prompts, context-pack excerpts, and provenance artifacts.
+## Diff Analysis — detecting scope creep & unrelated edits
 
-Example `report.summary` snippet:
+Purpose: provide automated signals when a run's edits span unexpected files, modules, or logical boundaries that indicate scope creep or potential agent overreach.
 
-```json
-{
-  "title": "Add logging to agent",
-  "approval": { "required": ["tech-lead"], "approvedBy": [{ "user": "alice", "role": "tech-lead", "at": "..." }] },
-  "verification": { "checksPassed": 5, "checksFailed": 0 },
-  "remediationHints": []
-}
-```
+Core metrics and heuristics:
 
-Report generation behavior:
+- Edit footprint: number of files changed, directories touched, and file-type distribution.
+- Module boundary crossing: edits that modify files across multiple unrelated packages or services (detect via repo topology or configured monorepo mapping).
+- High-entropy edits: large insertions/deletions or many small edits across many files.
+- Unexpected path edits: modifications in a configured denylist (e.g., infra, CI, LICENSE) or outside the permitted workDir.
+- Semantic similarity: compare changed file names and changed symbols against spec-scoped file list (approximate via token overlap or simple name matching) to estimate relevance.
 
-- Reports assemble per-task evidence: diffs, verification outputs, and a short machine-extracted rationale.
-- Reports include an `approval` summary for quick scanning and a per-task approval table.
+Alert levels:
 
-Approval metadata & immutability:
+- INFO: minor, expected expansion (within allowed tolerances)
+- WARNING: crosses a configured boundary (e.g., touches another package)
+- BLOCK: edits in denylist paths, or changes that exceed configured thresholds for scope
 
-- Approval actions write to `progress.log` and are included in the run's immutable provenance. The `report.summary` includes a canonical `approvalSnapshot` that captures the approval state at the time of commit/PR creation.
+Behavior and responses:
 
-## Cross-run orchestration (no scheduling)
+- Diff analysis runs after each atomic apply and writes a `diff-analysis/<seq>.json` artifact under `.agent/run/<id>/` with metrics, rule triggers, and suggested reviewer hints.
+- The Review Gate surfaces these alerts and blocks commit if a BLOCK-level trigger occurs, requiring explicit reviewer approval to proceed.
 
-Purpose: allow runs to relate and compose outputs (e.g., a design run feeding an implementation run) without introducing a scheduler.
+Configuration & tuning:
 
-Key primitives:
+- Default heuristics are conservative; repository owners may provide `.agent/diff-rules.json` to adjust thresholds, allowlists/denylist, and package boundaries.
 
-- `linkRuns(parentRunId, childRunId, relationType)` — records dependency and semantic relation (e.g., `implements`, `updates`, `depends_on`).
-- `promoteArtifact(runId, artifactPath, targetRunId)` — copy or reference artifacts from one run into another for reuse (e.g., reuse compiled summaries or a validated patch).
-- `aggregateReports(runIds[])` — produce a roll-up report merging verification and approval metadata across runs.
+## Session Persistence & Resumability
 
-Use-cases:
+Purpose: allow runs to be paused, survive crashes, and be resumed with deterministic state and preserved provenance.
 
-- Design review runs produce an agreed spec that seeds an implement-spec run; `linkRuns` makes the relation explicit and retrievable.
-- A hotfix run can promote a patch into a release-run candidate via `promoteArtifact`.
+Checkpoint model:
 
-Consistency and provenance:
+- Checkpoints are saved under `.agent/run/<id>/checkpoints/<seq>.json` and include:
+  - TaskLoop internal state (current prompt, last agent response, applied tasks list)
+  - Open sessions (agent session ids), locks, and in-flight exec commands metadata
+  - A digest of workspace snapshot (file sha map or patch list)
 
-- All cross-run operations append provenance events and are recorded under `.agent/run/<id>/crossrun.json` with timestamps and user metadata.
+Storage & atomicity:
+
+- Writing a checkpoint is a file-atomic operation: write to `tmp` then rename.
+- Maintain a `latest` symlink or pointer file to the most recent checkpoint for fast resume.
+
+Resume flow:
+
+1. Orchestrator detects an incomplete run (presence of `checkpoints/latest`) and invokes `resumeRun(runId)`.
+2. `resumeRun` validates checkpoint integrity (checks provenance artifacts exist, no partial writes) and restores TaskLoop state.
+3. Verify agent session liveness; if agent session is stale, create a new agent session and rehydrate it with the last prompt and context.
+4. Re-run verification for any tasks that were in `applied` but not `verified` (to detect drift) before continuing.
+
+Conflict & safety handling:
+
+- If workspace drift is detected (files changed outside of `.agent/run` since checkpoint), mark the run `conflicted` and surface via the UI. The reviewer must decide to continue, rebase, or abort.
+- Provide `inspect-and-merge` helpers that show diffs between the checkpoint snapshot and current workspace state.
 
 APIs and CLI:
 
-- `agent-orchestrator run:link --from <run> --to <run> --relation implements`
-- `agent-orchestrator run:promote --run <source> --artifact <path> --target <run>`
+- `orchestrator.resumeRun(runId)` — programmatic resume support for other tools and tests
+- CLI: `npx agent-orchestrator resume --run <id>` to resume a run interactively
 
-## Tests & validation
+## Tests & QA guidance
 
-- Unit tests for `VerifierRegistry` mapping sample criteria to executable plans.
-- Integration tests that run an example criteria set against a sample repo and assert expected verification outputs.
-- Cross-run tests: link two runs and verify `aggregateReports()` includes data from both runs and that provenance references are valid.
+- Unit tests for diff-analysis rules: verify metric computations and rule triggers on synthetic diffs.
+- Integration tests for checkpoint write/read and resume flows, including crash-simulations (kill process after checkpoint write and validate resume recovers an equivalent TaskLoop state).
+- UI tests (lightweight): ensure reviewer actions via REST endpoints update `progress.json` and write audit logs.
 
-## Acceptance Criteria (Phase 7)
+## Acceptance Criteria (Phase 6)
 
-- Acceptance criteria can be authored and validated with the provided schema and CLI; `VerifierRegistry` produces an executable verification plan.
-- Reports include explicit approval metadata and `approvalSnapshot` is included in provenance for commits/PRs.
-- Cross-run primitives (`linkRuns`, `promoteArtifact`, `aggregateReports`) function and produce provenance traces linking related runs.
+- Web UI exposes run list, run dashboard, and task detail pages, and reviewer actions persist to `progress.json`.
+- Diff analysis generates metrics for each apply and raises at least INFO/WARNING/BLOCK alerts per configured heuristics; BLOCK-level alerts require explicit reviewer approval to commit.
+- Checkpointing is reliable: resume from latest checkpoint restores run state and does not lose provenance; resume flow handles workspace drift via conflict detection.
 
 ## Next steps and small-risk extras
 
-- Provide a visual report comparator in the web UI to compare aggregated run reports.
-- Add role-based reviewer policies to require specific role approvals for certain criteria (e.g., security tests must be approved by `security` role).
+- Add a small embedded diff visualiser component (e.g., using a lightweight diff library) to the UI.
+- Implement repository topology discovery to auto-generate package/service boundaries for better scope detection.
 
 ---
 
-If you'd like, I can implement the `VerifierRegistry` and a small example mapping file plus unit tests next.
+If you'd like, I can now implement the `diff-analysis` module and unit tests, or scaffold the UI server endpoints and a tiny static UI to review runs. Tell me which to start with.

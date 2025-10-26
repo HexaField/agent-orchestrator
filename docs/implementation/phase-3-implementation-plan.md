@@ -1,58 +1,49 @@
-# Phase 3 Implementation Plan — Orchestrator, Prompt Compiler & Context Pack
+# Phase 3 Implementation Plan — Iterative Feedback & Steering
 
 Status: Draft
 
 ## Scope
 
-Phase 3 implements the orchestration layer: assembling context, compiling prompts from templates with schema validation, and wiring the task loop into a policy-driven orchestrator.
+Replace the single yes/no LLM judge in `runTaskLoop` with a compact FeedbackEngine that returns a structured per-iteration report (verdict, issues, steering suggestions, confidence). This enables actionable, auditable feedback and optional safe auto-steering.
 
-This phase builds the ContextPackBuilder, PromptCompiler (template rendering + schema checks), and the Orchestrator that sequences context → prompt → task-loop runs.
+Touches: `src/orchestrator/taskLoop.ts`, new `src/orchestrator/feedback.ts`, and tests/provenance.
 
-## Objectives
+## Key objectives
 
-- Implement `ContextPackBuilder` to gather spec, repo snippets, last summaries, and progress.json into a prioritized context pack.
-- Implement `PromptCompiler` to load templates from `./.agent/templates/*.md`, render them using `<%varName%>` injection, and validate injected inputs against TypeScript/JSON schemas.
-- Implement the `Orchestrator` high-level flow: create run id, resolve adapters, build context pack, compile prompts, invoke TaskLoop, and persist artifacts.
+- Provide `analyzeIteration(runId, iteration, task, agentOutput, ctx): Promise<FeedbackReport>`
+- Persist `<iter>-feedback.json` to provenance (sanitized)
+- Keep `TaskLoop` backward-compatible by deriving `summary.success` from feedback verdicts
+- Gate any auto-applied steering behind `opts.enableAutoSteer` and `AGENT_AUTO_STEER` env flag
 
-## Prompt Templates & Schema Validation
+## Minimal FeedbackReport (required fields)
 
-- Templates live in `./.agent/templates/*.md` and use the injection syntax `<%varName%>`.
-- Each template must have a corresponding JSON Schema (defined in TypeScript under `src/types/promptSchemas.ts`) describing the expected injected properties.
-- The `PromptCompiler` performs runtime validation of template inputs against the schema and fails fast on schema violations.
+- verdict: 'complete'|'partial'|'incomplete'|'fail'
+- confidence: number (0..1)
+- rationale: string
+- issues: [{ id, type, severity, message, evidence? }]
+- steering: [{ id, type, description, safe, patch?|command? }]
 
-## Contracts (selected)
+## Deliverables
 
-- ContextPackBuilder
-  - Inputs: spec path, previous summary, repo index
-  - Output: { items: ContextItem[], citations, budget }
+- `src/orchestrator/feedback.ts` (types + `analyzeIteration` + small prompt templates)
+- Update `src/orchestrator/taskLoop.ts` to call feedback, persist files, and add `f-<i>` steps
+- Unit tests for parsing/heuristics and integration tests asserting feedback files, gating, and backward compatibility
 
-- PromptCompiler
-  - Inputs: context pack, phase, task, checklist, output schema
-  - Output: { system, user, schema }
+## Safety & observability
 
-- Orchestrator (top-level)
-  - Responsibilities: run lifecycle management, adapter resolution, run folder creation, high-level logging.
+- Never auto-apply unsafe edits by default. Auto-steer only when `enableAutoSteer===true` and `AGENT_AUTO_STEER=true`.
+- Record durations, confidence, and evidence in provenance; always scrub secrets.
 
-## Deliverables (Phase 3)
+## Tests & rollout
 
-- `contextPack.ts` implementation + tests extracting prioritized context from repo and spec.
-- `promptCompiler.ts` implementation + tests that validate template rendering and schema enforcement.
-- `runner.ts` or orchestrator entrypoint wiring the pieces for a programmatic run (CLI wiring postponed to Phase 4).
+- Unit: parse malformed/valid LLM responses, `isOutOfScope` checks
+- Integration: stub LLM to return `complete` and assert `<iter>-feedback.json` and `summary.success`
+- Keep destructive tests gated behind env flags
 
-## Mermaid Diagram
+## Next steps
 
-```mermaid
-flowchart TD
-  CLI[CLI] --> ORCH[Orchestrator]
-  ORCH --> CTX[ContextPack Builder]
-  ORCH --> PROMPT[Prompt Compiler]
-  ORCH --> LOOP[Task Loop]
-  LOOP -->|Agentic plan| AGENT[Agent Adapter]
-  LOOP -->|LLM calls| LLM[LLM Adapter]
-  LOOP -->|Exec| EXEC[Exec Adapter]
-  LOOP -->|FS| FS[FS Adapter]
-  ORCH --> VERIFY[Verification Engine]
-  VERIFY --> EXEC
-  ORCH --> REPORT[Report Writer]
-  REPORT --> STORE[(.agent/run & memory)]
-```
+1. Implement `feedback.ts` scaffold + unit tests
+2. Wire into `taskLoop.ts`, persist feedback, add step entry
+3. Add integration tests and run CI with auto-steer disabled
+
+Completion: this is a compact plan to add structured per-iteration feedback, safe steering, and provenance for TaskLoop.
