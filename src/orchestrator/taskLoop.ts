@@ -10,8 +10,6 @@ export type TaskLoopOpts = {
   llm: LLMAdapter
   workDir: string
   maxIterations?: number
-  enableFeedback?: boolean
-  enableAutoSteer?: boolean
 }
 
 export type TaskLoopStep = {
