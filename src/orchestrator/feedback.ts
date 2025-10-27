@@ -1,4 +1,4 @@
-import { LLMAdapter } from '../adapters/llm/interface'
+import { LLMAdapter, LLMCallResult, Message } from '../adapters/llm/interface'
 
 export type Issue = {
   id: string
@@ -32,13 +32,19 @@ export type FeedbackReport = {
  * This is intentionally lightweight: it tries to parse JSON from the model and falls back to
  * a best-effort verdict when parsing fails.
  */
+export type AnalyzeIterationResult = {
+  feedback: FeedbackReport
+  llm?: LLMCallResult
+  llmMessages?: Message[]
+}
+
 export async function analyzeIteration(opts: {
   llm: LLMAdapter
   runId: string
   iteration: number
   task: string
   agentOutput: { text: string }
-}): Promise<FeedbackReport> {
+}): Promise<AnalyzeIterationResult> {
   const { llm, iteration, task, agentOutput } = opts
 
   const sys = {
@@ -52,45 +58,56 @@ export async function analyzeIteration(opts: {
     content: `Task: ${task}\nIteration: ${iteration}\nAgent output:\n${agentOutput?.text || ''}\n\nReturn JSON: {verdict,confidence,rationale,issues,steering}`
   }
 
-  let llmRes
+  const messages: Message[] = [sys, user]
+
+  const start = Date.now()
+  let llmRes: LLMCallResult | undefined
   try {
-    llmRes = await llm.call([sys, user], { maxTokens: 512 })
+    llmRes = await llm.call(messages, { maxTokens: 512 })
   } catch (e: any) {
-    return {
+    const duration = Date.now() - start
+    const fallback: FeedbackReport = {
       verdict: 'incomplete',
       confidence: 0,
       rationale: `LLM call failed: ${String(e)}`,
       issues: [
         { id: 'llm-call-failed', type: 'other', severity: 'high', message: 'LLM call failed', evidence: String(e) }
       ],
-      steering: []
+      steering: [],
+      metrics: { durationMs: duration }
     }
+    return { feedback: fallback, llm: undefined, llmMessages: messages }
   }
 
+  const duration = Date.now() - start
   const text = llmRes?.text || ''
 
   try {
     const parsed = JSON.parse(text)
     // Basic validation & defaults
-    return {
+    const report: FeedbackReport = {
       verdict: parsed.verdict || 'incomplete',
       confidence: typeof parsed.confidence === 'number' ? parsed.confidence : 0.5,
       rationale: parsed.rationale || String(text).slice(0, 1000),
       issues: Array.isArray(parsed.issues) ? parsed.issues : [],
       steering: Array.isArray(parsed.steering) ? parsed.steering : [],
-      metrics: parsed.metrics || {}
+      metrics: { ...(parsed.metrics || {}), durationMs: duration }
     }
+
+    return { feedback: report, llm: llmRes, llmMessages: messages }
   } catch (err) {
     // Fallback heuristic: look for a yes-like token
     const normalized = (text || '').toLowerCase()
     const isYes = normalized.includes('complete') || normalized.includes('yes') || normalized.includes('done')
-    return {
+    const report: FeedbackReport = {
       verdict: isYes ? 'complete' : 'incomplete',
       confidence: isYes ? 0.6 : 0.4,
       rationale: String(text).slice(0, 200),
       issues: [],
-      steering: []
+      steering: [],
+      metrics: { durationMs: duration }
     }
+    return { feedback: report, llm: llmRes, llmMessages: messages }
   }
 }
 

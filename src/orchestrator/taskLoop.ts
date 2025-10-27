@@ -1,7 +1,7 @@
 import fs from 'fs'
 import path from 'path'
 import { AgentAdapter } from '../adapters/agent/interface'
-import { LLMAdapter, Message } from '../adapters/llm/interface'
+import { LLMAdapter } from '../adapters/llm/interface'
 import analyzeIteration from './feedback'
 
 export type TaskLoopOpts = {
@@ -103,19 +103,17 @@ export async function runTaskLoop(opts: TaskLoopOpts): Promise<TaskLoopResult> {
       lastAgentOutput = agentRes.text
       steps.push({ id: `a-${i}`, iteration: i, adapter: 'agent', input: agentInput, output: agentRes })
 
-      // Ask the LLM whether the agent output means the task is done.
-      const llmMessages: Message[] = [
-        { role: 'system', content: 'You are a concise judge. Answer only yes or no.' },
-        {
-          role: 'user',
-          content: `Task: ${task}\nAgent output: ${lastAgentOutput}\nIs the task complete? Answer 'yes' or 'no'.`
-        }
-      ]
+      // Analyze the iteration using the feedback engine (which performs the LLM call).
+      const analysis = await analyzeIteration({ llm, runId, iteration: i, task, agentOutput: agentRes })
+      const feedback = analysis.feedback
+      const llmRes = analysis.llm
+      const llmMessages = analysis.llmMessages
 
-      const llmRes = await llm.call(llmMessages, { maxTokens: 16 })
-      steps.push({ id: `l-${i}`, iteration: i, adapter: 'llm', input: llmMessages, output: llmRes })
+      // record LLM step if available
+      if (llmRes) {
+        steps.push({ id: `l-${i}`, iteration: i, adapter: 'llm', input: llmMessages, output: llmRes })
+      }
 
-      const feedback = await analyzeIteration({ llm, runId, iteration: i, task, agentOutput: agentRes })
       steps.push({ id: `f-${i}`, iteration: i, adapter: 'feedback', input: { agent: agentRes }, output: feedback })
 
       // persist feedback to provenance
@@ -125,7 +123,7 @@ export async function runTaskLoop(opts: TaskLoopOpts): Promise<TaskLoopResult> {
         'utf8'
       )
 
-      const normalized = (llmRes.text || '').trim().toLowerCase()
+      const normalized = (llmRes?.text || '').trim().toLowerCase()
       const isYes =
         (feedback && feedback.verdict === 'complete') ||
         normalized.startsWith('yes') ||
@@ -158,21 +156,23 @@ export async function runTaskLoop(opts: TaskLoopOpts): Promise<TaskLoopResult> {
         'utf8'
       )
 
-      const provLLM = {
-        id: `l-${i}`,
-        timestamp: new Date().toISOString(),
-        adapter: 'llm',
-        type: 'llm-call',
-        input: { messages: llmMessages },
-        output: sanitizeOutput(llmRes),
-        stdout: (llmRes as any).stdout,
-        stderr: (llmRes as any).stderr
+      if (llmRes) {
+        const provLLM = {
+          id: `l-${i}`,
+          timestamp: new Date().toISOString(),
+          adapter: 'llm',
+          type: 'llm-call',
+          input: { messages: llmMessages },
+          output: sanitizeOutput(llmRes),
+          stdout: (llmRes as any).stdout,
+          stderr: (llmRes as any).stderr
+        }
+        fs.writeFileSync(
+          path.join(provenanceDir, `${i.toString().padStart(3, '0')}-llm.json`),
+          JSON.stringify(provLLM, null, 2),
+          'utf8'
+        )
       }
-      fs.writeFileSync(
-        path.join(provenanceDir, `${i.toString().padStart(3, '0')}-llm.json`),
-        JSON.stringify(provLLM, null, 2),
-        'utf8'
-      )
 
       if (isYes) {
         // success
