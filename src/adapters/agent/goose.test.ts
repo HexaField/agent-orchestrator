@@ -35,7 +35,7 @@ describe('Goose Agent Adapter (SDK integration)', () => {
     const sessionId = await adapter.startSession({})
     expect(sessionId).toBeDefined()
     const filePath = path.join(tmpdir, 'agent-written-file.txt')
-    const writeCommand = `Please create a file at path "${filePath}" with the content "Hello, OpenCode!"`
+    const writeCommand = `Please create a file at path "${filePath}" with the content "Hello, OpenCode!" Don't ask for clarification, just do it.`
 
     const writeResult = await adapter.run(sessionId, writeCommand)
     console.log(`Agent write response: "${JSON.stringify(writeResult)}"`)

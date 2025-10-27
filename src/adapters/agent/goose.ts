@@ -1,19 +1,27 @@
 import { spawn } from 'child_process'
+import * as fs from 'fs/promises'
 import { AgentAdapter, AgentRunResult, AgentStartOptions } from './interface'
 
 /**
- * Goose adapter
+ * Goose adapter (compatible with Goose CLI 1.12.x as per `goose --help`)
  *
- * Implements the minimal AgentAdapter contract using the Goose CLI.
- * It persists/loads conversations via Goose session names and exports
- * the latest assistant message by calling `goose session export --format json`.
+ * Strategy:
+ * 1) Try **named-session** flow using only commands that exist in your CLI:
+ *      - Start/append:   `goose run --name <id> --resume --text "<msg>"`
+ *      - Export:         `goose session export --name <id> --format json`
+ *    NOTE: Some builds require the session to already exist. If the first `run`
+ *    complains "No session found", we fall back to stateless mode.
  *
- * Requirements:
- *  - Goose CLI must be installed and configured (`goose configure`).
- *  - This adapter only uses documented CLI commands; no private APIs.
+ * 2) Fallback **stateless** flow (no sessions):
+ *      - Turn execution: `goose run --text "<msg>"`
+ *    We keep our own minimal transcript (in-memory) and only return stdout.
+ *
+ * This avoids subcommands your binary doesn’t have (`chat`, `session create`),
+ * and it avoids `--path` which expects a pre-existing run-session file.
  */
 export async function createGooseAgentAdapter(projectPath: string): Promise<AgentAdapter> {
-  // Utility: run a shell command and collect stdout as a string
+  type HistoryMsg = { role: 'user' | 'assistant' | 'system'; content: string }
+
   const runCmd = (
     cmd: string,
     args: string[] = [],
@@ -23,7 +31,7 @@ export async function createGooseAgentAdapter(projectPath: string): Promise<Agen
       const child = spawn(cmd, args, {
         cwd,
         env: { ...process.env, ...env },
-        shell: process.platform === 'win32' // allow built-ins on Windows
+        shell: process.platform === 'win32'
       })
       let stdout = ''
       let stderr = ''
@@ -36,7 +44,6 @@ export async function createGooseAgentAdapter(projectPath: string): Promise<Agen
     })
   }
 
-  // Generates a safe session name
   const makeSessionName = (title?: string) => {
     if (title?.trim()) return title.trim().replace(/\s+/g, '-')
     const ts = new Date()
@@ -46,10 +53,8 @@ export async function createGooseAgentAdapter(projectPath: string): Promise<Agen
     return `orchestrator-${ts}`
   }
 
-  // Parse the latest assistant message text from a Goose JSON export
   const extractLastAssistantText = (jsonText: string): string | undefined => {
     try {
-      // Export format is an array or object with messages depending on version; normalize defensively
       const data = JSON.parse(jsonText)
       const messages: any[] = Array.isArray(data)
         ? data
@@ -58,7 +63,6 @@ export async function createGooseAgentAdapter(projectPath: string): Promise<Agen
           : []
       for (let i = messages.length - 1; i >= 0; i--) {
         const m = messages[i]
-        // Common shapes: { role: 'assistant', content: '...' } or parts array
         const role = m.role || m.author || m.sender || ''
         if (String(role).toLowerCase().includes('assistant')) {
           if (typeof m.content === 'string') return m.content
@@ -66,7 +70,6 @@ export async function createGooseAgentAdapter(projectPath: string): Promise<Agen
             const textPart = m.parts.find((p: any) => p?.type === 'text' && typeof p.text === 'string')
             if (textPart) return textPart.text
           }
-          // Some exports may use `text`
           if (typeof m.text === 'string') return m.text
         }
       }
@@ -76,96 +79,42 @@ export async function createGooseAgentAdapter(projectPath: string): Promise<Agen
     return undefined
   }
 
+  // In-memory transcript for stateless fallback
+  const transcripts = new Map<string, HistoryMsg[]>()
   let isStopped = false
-  // If Goose exists but a session command fails at runtime we can
-  // switch to an in-process fallback. `localSessions` stores sessions
-  // created in fallback mode and `useInProcessFallback` flips behavior.
-  let useInProcessFallback = false
-  const localSessions = new Set<string>()
-  // Detect whether the Goose CLI is available. If not, provide a
-  // lightweight in-process fallback adapter so tests and local runs
-  // still work in environments without the Goose binary.
-  const gooseAvailable = await runCmd('goose', ['--version'])
-    .then((r) => r.code === 0)
-    .catch(() => false)
 
-  if (!gooseAvailable) {
-    // Simple in-memory session simulator that understands the two
-    // behaviors the tests exercise:
-    //  - answering the current working directory
-    //  - creating a file when asked to
-    const sessions = new Set<string>()
-    return {
-      async startSession(options: AgentStartOptions): Promise<string> {
-        if (isStopped) throw new Error('Adapter has been stopped')
-        const name = makeSessionName(options.title)
-        sessions.add(name)
-        return name
-      },
-
-      async run(sessionId: string, input: string): Promise<AgentRunResult> {
-        if (isStopped) throw new Error('Adapter has been stopped')
-        if (!sessions.has(sessionId)) throw new Error(`No session found with name '${sessionId}'`)
-
-        const lower = input.toLowerCase()
-        // Detect a cwd query
-        if (
-          lower.includes('current working directory') ||
-          lower.includes('current working dir') ||
-          lower.includes('pwd')
-        ) {
-          return { text: projectPath }
-        }
-
-        // Detect a request to create a file. Tests send a prompt like:
-        // Please create a file at path "<path>" with the content "<content>"
-        const filePathMatch = input.match(/create a file at path\s+"([^"]+)"\s+with the content\s+"([\s\S]*?)"/i)
-        if (filePathMatch) {
-          const fp = filePathMatch[1]
-          const content = filePathMatch[2]
-          // Ensure parent dir exists and write the file
-          try {
-            const fs = await import('fs')
-            const path = await import('path')
-            fs.mkdirSync(path.dirname(fp), { recursive: true })
-            fs.writeFileSync(fp, content, 'utf8')
-            return { text: `Created file at ${fp}` }
-          } catch (err: any) {
-            return { text: `Failed to create file: ${String(err.message || err)}` }
-          }
-        }
-
-        // Generic fallback reply
-        return { text: '' }
-      },
-
-      async stop(): Promise<void> {
-        isStopped = true
-      }
+  const ensureWorkspace = async () => {
+    try {
+      await fs.mkdir(`${projectPath}/.goose`, { recursive: true })
+    } catch {
+      /* best effort */
     }
   }
 
   return {
     async startSession(options: AgentStartOptions): Promise<string> {
       if (isStopped) throw new Error('Adapter has been stopped')
+      await ensureWorkspace()
       const name = makeSessionName(options.title)
 
-      // Create the session using the `session` command. The Goose CLI
-      // documents starting sessions via `goose session --name <name>`.
-      const { code } = await runCmd('goose', [
-        'session',
+      // Try to “touch” the named session by doing a no-op run.
+      // Some Goose builds will succeed (creating/resuming), others will return “No session found”.
+      const seed = await runCmd('goose', [
+        'run',
         '--name',
         name,
+        '--resume',
+        '--text',
+        'initialize session',
         '--max-turns',
         String(options.limits?.maxIterations ?? 1)
-      ]).catch(() => ({ code: 1, stdout: '', stderr: 'spawn failed' }))
+      ])
 
-      if (code !== 0) {
-        // Fall back to the in-process simulator if the CLI can't create
-        // or resume sessions in this environment.
-        useInProcessFallback = true
-        localSessions.add(name)
-        return name
+      if (seed.code !== 0 && /no session found/i.test(seed.stderr)) {
+        // Fall back to stateless mode for this session id
+        transcripts.set(name, [])
+      } else if (seed.code !== 0) {
+        throw new Error(`Failed to start Goose session '${name}': ${seed.stderr || 'unknown error'}`)
       }
 
       return name
@@ -174,81 +123,55 @@ export async function createGooseAgentAdapter(projectPath: string): Promise<Agen
     async run(sessionId: string, input: string): Promise<AgentRunResult> {
       if (isStopped) throw new Error('Adapter has been stopped')
 
-      // If we previously determined we must use the in-process fallback,
-      // handle the common test cases locally.
-      if (!gooseAvailable || useInProcessFallback || localSessions.has(sessionId)) {
-        const lower = input.toLowerCase()
-        if (
-          lower.includes('current working directory') ||
-          lower.includes('current working dir') ||
-          lower.includes('pwd')
-        ) {
-          return { text: projectPath }
+      // If we previously fell back to stateless for this session, or if a named run fails,
+      // we’ll use stateless execution.
+      const runNamed = async () => {
+        const res = await runCmd('goose', ['run', '--name', sessionId, '--resume', '--text', input])
+        if (res.code !== 0) return res
+        // Try to export the assistant’s latest reply
+        const exp = await runCmd('goose', ['session', 'export', '--name', sessionId, '--format', 'json'])
+        if (exp.code !== 0) {
+          // If export fails (e.g., session not actually present), return the run’s stdout as best-effort text
+          return { code: 0, stdout: res.stdout, stderr: '' }
         }
-
-        const filePathMatch = input.match(/create a file at path\s+"([^"]+)"\s+with the content\s+"([\s\S]*?)"/i)
-        if (filePathMatch) {
-          const fp = filePathMatch[1]
-          const content = filePathMatch[2]
-          try {
-            const fs = await import('fs')
-            const path = await import('path')
-            fs.mkdirSync(path.dirname(fp), { recursive: true })
-            fs.writeFileSync(fp, content, 'utf8')
-            return { text: `Created file at ${fp}` }
-          } catch (err: any) {
-            return { text: `Failed to create file: ${String(err.message || err)}` }
-          }
-        }
-
-        return { text: '' }
+        const text = extractLastAssistantText(exp.stdout) ?? res.stdout
+        return { code: 0, stdout: text, stderr: '' }
       }
 
-      // Send input into the named session (resuming it)
-      const { code, stderr } = await runCmd('goose', ['run', '--name', sessionId, '--resume', '--text', input])
-      if (code !== 0) {
-        // If a run fails, flip into the in-process fallback to avoid hard
-        // test failures in environments with limited Goose configuration.
-        useInProcessFallback = true
-        localSessions.add(sessionId)
-
-        // Perform the same fallback handling immediately.
-        const lower = input.toLowerCase()
-        if (
-          lower.includes('current working directory') ||
-          lower.includes('current working dir') ||
-          lower.includes('pwd')
-        ) {
-          return { text: projectPath }
+      const runStateless = async () => {
+        const history = transcripts.get(sessionId) ?? []
+        // You can choose to include history here if Goose benefits from it.
+        // For safety, we only send the current turn (Goose will rely on its tools/context).
+        const exec = await runCmd('goose', ['run', '--text', input])
+        if (exec.code !== 0) {
+          throw new Error(`Goose run failed: ${exec.stderr || 'unknown error'}`)
         }
-        const filePathMatch = input.match(/create a file at path\s+"([^"]+)"\s+with the content\s+"([\s\S]*?)"/i)
-        if (filePathMatch) {
-          const fp = filePathMatch[1]
-          const content = filePathMatch[2]
-          try {
-            const fs = await import('fs')
-            const path = await import('path')
-            fs.mkdirSync(path.dirname(fp), { recursive: true })
-            fs.writeFileSync(fp, content, 'utf8')
-            return { text: `Created file at ${fp}` }
-          } catch (err: any) {
-            return { text: `Failed to create file: ${String(err.message || err)}` }
-          }
-        }
-        return { text: '' }
+        // Save a minimal transcript locally (not used by Goose, only for our adapter)
+        history.push({ role: 'user', content: input })
+        history.push({ role: 'assistant', content: exec.stdout })
+        transcripts.set(sessionId, history)
+        return { code: 0, stdout: exec.stdout, stderr: '' }
       }
 
-      // Export the session in JSON and parse the latest assistant reply
-      const exportRes = await runCmd('goose', ['session', 'export', '--name', sessionId, '--format', 'json'])
-      if (exportRes.code !== 0) {
-        throw new Error(`Goose export failed: ${exportRes.stderr || 'unknown error'}`)
+      const alreadyStateless = transcripts.has(sessionId)
+      let out: { code: number | null; stdout: string; stderr: string }
+
+      if (alreadyStateless) {
+        out = await runStateless()
+      } else {
+        const named = await runNamed()
+        if (named.code !== 0 || /no session found/i.test(named.stderr)) {
+          // Switch this session to stateless fallback
+          out = await runStateless()
+        } else {
+          out = named
+        }
       }
-      const text = extractLastAssistantText(exportRes.stdout) || ''
-      return { text }
+
+      return { text: out.stdout.trim() }
     },
 
     async stop(): Promise<void> {
-      // No persistent process to terminate; future-proof for potential background servers
       isStopped = true
     }
   }
