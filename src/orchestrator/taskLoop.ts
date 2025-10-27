@@ -10,6 +10,13 @@ export type TaskLoopOpts = {
   llm: LLMAdapter
   workDir: string
   maxIterations?: number
+  /**
+   * Optional path to an existing run directory. If provided, the task loop will
+   * write provenance and artifacts into this directory instead of creating a
+   * new run folder. When provided, the TaskLoop will return runId equal to
+   * the basename of this directory.
+   */
+  runDir?: string
 }
 
 export type TaskLoopStep = {
@@ -48,7 +55,7 @@ export async function runTaskLoop(opts: TaskLoopOpts): Promise<TaskLoopResult> {
   const { task, agent, llm, workDir, maxIterations = 6 } = opts
 
   const artifactsBase = path.join(workDir, '.agent')
-  const runDir = mkRunDir(artifactsBase)
+  const runDir = opts.runDir ? opts.runDir : mkRunDir(artifactsBase)
   const provenanceDir = path.join(runDir, 'provenance')
   fs.mkdirSync(provenanceDir, { recursive: true })
   const steps: TaskLoopStep[] = []
